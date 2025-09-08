@@ -24,6 +24,11 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
     }
     var elapsedTime: String = "00:00.0"
 
+    // Expose running state for UI
+    var isRunning: Bool {
+        tickerTask != nil
+    }
+
     // Use a private, ignored AppStorage and expose a computed property to avoid
     // Observation macro storage name collisions.
     @ObservationIgnored
@@ -58,7 +63,8 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
         do {
             #if os(iOS)
             // Configure the audio session on iOS
-            try AVAudioSession.sharedInstance().setCategory(.playback)
+            try? AVAudioSession.sharedInstance().setCategory(.playback)
+            try? AVAudioSession.sharedInstance().setActive(true)
             #endif
 
             if let url = Bundle.main.url(forResource: "Tink", withExtension: "aiff") {
@@ -75,24 +81,36 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
         log.debug("CuedTimer init")
     }
 
+    deinit {
+        tickerTask?.cancel()
+        tickerTask = nil
+    }
+
     // MARK: - Controls
     func start() {
         if tickerTask == nil {
-            tickerTask = Task { [weak self] in
-                guard let self else { return }
-                let clock = ContinuousClock()
-                while !Task.isCancelled {
-                    try? await clock.sleep(for: precision)
-                    self.elapsed += precision
-                    self.tickSideEffects()
+            // Notify that `isRunning` (computed) will change
+            self.withMutation(keyPath: \CuedTimer.isRunning) {
+                tickerTask = Task { [weak self] in
+                    guard let self else { return }
+                    let clock = ContinuousClock()
+                    while !Task.isCancelled {
+                        try? await clock.sleep(for: precision)
+                        self.elapsed += precision
+                        self.tickSideEffects()
+                    }
                 }
             }
         }
     }
 
     func stop() {
-        tickerTask?.cancel()
-        tickerTask = nil
+        guard tickerTask != nil else { return }
+        // Notify that `isRunning` (computed) will change
+        self.withMutation(keyPath: \CuedTimer.isRunning) {
+            tickerTask?.cancel()
+            tickerTask = nil
+        }
     }
 
     func reset() {
@@ -121,13 +139,14 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
         let minutes = Int(totalSeconds / 60.0)
         let secsPart = totalSeconds.truncatingRemainder(dividingBy: 60.0)
 
-        if secsPart < precisionSeconds {
-            if minutes > 0 {
-                announce("\(minutes) " + (minutes > 1 ? "minutes" : "minute"))
-            }
-        } else if secsPart.truncatingRemainder(dividingBy: 10.0) < precisionSeconds {
+        let tolerance = precisionSeconds / 2
+        
+        if secsPart < tolerance && minutes > 0 {
+            announce("\(minutes) " + (minutes > 1 ? "minutes" : "minute"))
+        } else if secsPart.truncatingRemainder(dividingBy: 10.0) < tolerance {
+            log.debug("Announcing \(Int(secsPart)) @ \(secsPart.truncatingRemainder(dividingBy: 10.0))")
             announce("\(Int(secsPart))")
-        } else if secsPart.truncatingRemainder(dividingBy: 5.0) < precisionSeconds {
+        } else if secsPart.truncatingRemainder(dividingBy: 5.0) < tolerance {
             soundEffect?.play()
             playHaptic()
         }
@@ -142,10 +161,9 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
     private func announce(_ text: String) {
         let utterance = AVSpeechUtterance(string: text)
         utterance.volume = Float(volumePercent / 100.0)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
 
         // speak() is non-blocking; calling directly on the main actor is safe.
-//        synthesizer.speak(utterance)
+        synthesizer.speak(utterance)
     }
 
     // MARK: - Delegates

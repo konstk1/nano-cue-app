@@ -25,23 +25,36 @@ struct ContentView: View {
             // Transport controls
             HStack(spacing: 12) {
                 Button {
-                    timer.start()
+                    if timer.isRunning {
+                        timer.stop()
+                    } else {
+                        timer.start()
+                    }
                 } label: {
-                    Label("Start", systemImage: "play.fill")
+                    // Keep icon position fixed, let text grow to the right.
+                    Label {
+                        Text(timer.isRunning ? "Pause" : "Start")
+                            .lineLimit(1)
+                    } icon: {
+                        Image(systemName: timer.isRunning ? "pause.fill" : "play.fill")
+                            .frame(width: 20, alignment: .center) // fixed icon width
+                    }
+                    .labelStyle(.titleAndIcon)
+                    // Keep overall button width stable as text changes.
+                    .frame(minWidth: 80, minHeight: 30, alignment: .leading)
+                    .padding(.leading, 10)
                 }
+                // Use a single style so padding stays identical between states.
                 .buttonStyle(.borderedProminent)
-
-                Button {
-                    timer.stop()
-                } label: {
-                    Label("Stop", systemImage: "pause.fill")
-                }
-                .buttonStyle(.bordered)
+                // Tint gray when running, default accent color otherwise.
+                .tint(timer.isRunning ? .gray : .accentColor)
 
                 Button(role: .destructive) {
                     timer.reset()
                 } label: {
                     Label("Reset", systemImage: "arrow.counterclockwise")
+                        .frame(minHeight: 30)
+                        .padding(.horizontal, 10)
                 }
                 .buttonStyle(.bordered)
             }
