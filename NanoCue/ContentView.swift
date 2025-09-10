@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var timer = CuedTimer()
+    private let buttonHeight: CGFloat = 30
 
     init() {}
 
@@ -41,7 +42,7 @@ struct ContentView: View {
                     }
                     .labelStyle(.titleAndIcon)
                     // Keep overall button width stable as text changes.
-                    .frame(minWidth: 80, minHeight: 30, alignment: .leading)
+                    .frame(minWidth: 80, minHeight: buttonHeight, alignment: .leading)
                     .padding(.leading, 10)
                 }
                 // Use a single style so padding stays identical between states.
@@ -53,30 +54,25 @@ struct ContentView: View {
                     timer.reset()
                 } label: {
                     Label("Reset", systemImage: "arrow.counterclockwise")
-                        .frame(minHeight: 30)
+                        .frame(minHeight: buttonHeight)
                         .padding(.horizontal, 10)
                 }
                 .buttonStyle(.bordered)
             }
 
-            // Volume control
+            // Tick volume control
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Label("Volume", systemImage: "speaker.wave.2.fill")
+                    Label("Tick Volume", systemImage: "speaker.wave.2.fill")
                     Spacer()
-                    Text("\(Int(timer.volumePercent))%")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
                 }
 
-                Slider(value: $timer.volumePercent, in: 0...100, step: 1) {
-                    Text("Volume")
-                } minimumValueLabel: {
-                    Image(systemName: "speaker.fill")
-                } maximumValueLabel: {
-                    Image(systemName: "speaker.wave.3.fill")
+                Picker("Tick Volume", selection: $timer.tickVolume) {
+                    ForEach(TickVolume.allCases, id: \.self) { level in
+                        Text(level.displayName).tag(level)
+                    }
                 }
+                .pickerStyle(.segmented)
             }
         }
         .padding()

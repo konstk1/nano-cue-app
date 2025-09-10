@@ -15,6 +15,29 @@ import SwiftUI
 import UIKit
 #endif
 
+enum TickVolume: String, CaseIterable {
+    case low
+    case medium
+    case high
+
+    var displayName: String {
+        switch self {
+        case .low: return "Low"
+        case .medium: return "Med"
+        case .high: return "High"
+        }
+    }
+
+    // Relative to system volume (AVAudioPlayer volume is 0.0 ... 1.0)
+    var volumeFactor: Float {
+        switch self {
+        case .low: return 0.5
+        case .medium: return 0.75
+        case .high: return 1.0
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class CuedTimer: NSObject, AVAudioPlayerDelegate {
@@ -29,19 +52,17 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
         tickerTask != nil
     }
 
-    // Use a private, ignored AppStorage and expose a computed property to avoid
-    // Observation macro storage name collisions.
+    // Store the tick volume selection in AppStorage.
+    // Use a private storage to avoid Observation macro name collisions.
     @ObservationIgnored
-    @AppStorage("volume") private var volumePercentStorage: Double = 50
+    @AppStorage("tickVolume") private var tickVolumeStorage: String = TickVolume.medium.rawValue
 
-    var volumePercent: Double {
-        get { volumePercentStorage }
+    var tickVolume: TickVolume {
+        get { TickVolume(rawValue: tickVolumeStorage) ?? .medium }
         set {
-            // Notify the Observation system that `volumePercent` is being mutated,
-            // even though we’re actually changing the private storage.
-            self.withMutation(keyPath: \CuedTimer.volumePercent) {
-                volumePercentStorage = newValue
-                soundEffect?.volume = Float(newValue / 100.0)
+            self.withMutation(keyPath: \CuedTimer.tickVolume) {
+                tickVolumeStorage = newValue.rawValue
+                soundEffect?.volume = newValue.volumeFactor
             }
         }
     }
@@ -71,7 +92,8 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
                 soundEffect = try AVAudioPlayer(contentsOf: url)
                 soundEffect?.delegate = self
                 soundEffect?.prepareToPlay()
-                soundEffect?.volume = Float(volumePercent / 100.0)
+                // Apply current tick volume selection to the tick sound.
+                soundEffect?.volume = tickVolume.volumeFactor
             } else {
                 log.error("Tink.aiff not found in bundle.")
             }
@@ -160,7 +182,7 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
 
     private func announce(_ text: String) {
         let utterance = AVSpeechUtterance(string: text)
-        utterance.volume = Float(volumePercent / 100.0)
+        // Do not override volume; use system volume for speech by default.
 
         // speak() is non-blocking; calling directly on the main actor is safe.
         synthesizer.speak(utterance)
