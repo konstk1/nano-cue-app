@@ -84,8 +84,11 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
         do {
             #if os(iOS)
             // Configure the audio session on iOS
-            try? AVAudioSession.sharedInstance().setCategory(.playback)
+            try? AVAudioSession.sharedInstance().setCategory(.playback, options: .mixWithOthers)
             try? AVAudioSession.sharedInstance().setActive(true)
+
+            // Keep the device awake whenever the app is in the foreground.
+            UIApplication.shared.isIdleTimerDisabled = true
             #endif
 
             if let url = Bundle.main.url(forResource: "Tink", withExtension: "aiff") {
@@ -106,6 +109,14 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
     deinit {
         tickerTask?.cancel()
         tickerTask = nil
+
+        #if os(iOS)
+        // Restore default idle behavior when this object goes away.
+        // (This flag only has effect while your app is active.)
+        Task { @MainActor in
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
+        #endif
     }
 
     // MARK: - Controls
