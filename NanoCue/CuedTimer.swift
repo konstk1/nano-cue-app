@@ -13,6 +13,7 @@ import SwiftUI
 
 #if os(iOS)
 import UIKit
+import ActivityKit
 #endif
 
 enum TickVolume: String, CaseIterable {
@@ -80,6 +81,9 @@ final class CuedTimer: NSObject {
     @ObservationIgnored private var nextScheduledSample: AVAudioFramePosition?
     @ObservationIgnored private let tickIntervalSeconds: Double = 5.0
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
+    #if os(iOS)
+    @ObservationIgnored var liveActivity: Activity<CueTimerAttributes>?
+    #endif
 
     // Haptics (iOS only)
     #if os(iOS)
@@ -91,8 +95,8 @@ final class CuedTimer: NSObject {
         do {
             #if os(iOS)
             // Configure the audio session on iOS
-            try? AVAudioSession.sharedInstance().setCategory(.playback, options: .mixWithOthers)
-            try? AVAudioSession.sharedInstance().setActive(true)
+            try AVAudioSession.sharedInstance().setCategory(.playback, options: .mixWithOthers)
+            try AVAudioSession.sharedInstance().setActive(true)
 
             // Keep the device awake whenever the app is in the foreground.
             UIApplication.shared.isIdleTimerDisabled = true
