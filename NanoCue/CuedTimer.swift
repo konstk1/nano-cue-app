@@ -122,6 +122,9 @@ final class CuedTimer: NSObject {
     func start() {
         if tickerTask == nil {
             startEngineLoop()
+#if os(iOS)
+            startLiveActivity()
+#endif
             // Notify that `isRunning` (computed) will change
             self.withMutation(keyPath: \CuedTimer.isRunning) {
                 tickerTask = Task { [weak self] in
@@ -158,6 +161,9 @@ final class CuedTimer: NSObject {
             tickerTask = nil
         }
         stopEngineLoop()
+#if os(iOS)
+        endLiveActivity()
+#endif
     }
 
     func reset() {
