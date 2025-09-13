@@ -4,7 +4,11 @@
 	classes = {
 	};
 	objectVersion = 77;
-	objects = {
+        objects = {
+
+/* Begin PBXBuildFile section */
+                FFB0AB412E7B000100000001 /* CueTimerLiveActivity.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = FFB0AAC12E7B000100000001 /* CueTimerLiveActivity.appex */; platformFilter = ios; };
+/* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		FFAF11DD2E6A673F00174D91 /* PBXContainerItemProxy */ = {
@@ -14,29 +18,44 @@
 			remoteGlobalIDString = FFAF11CE2E6A673E00174D91;
 			remoteInfo = NanoCue;
 		};
-		FFAF11E72E6A673F00174D91 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = FFAF11C72E6A673D00174D91 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = FFAF11CE2E6A673E00174D91;
-			remoteInfo = NanoCue;
-		};
+                FFAF11E72E6A673F00174D91 /* PBXContainerItemProxy */ = {
+                        isa = PBXContainerItemProxy;
+                        containerPortal = FFAF11C72E6A673D00174D91 /* Project object */;
+                        proxyType = 1;
+                        remoteGlobalIDString = FFAF11CE2E6A673E00174D91;
+                        remoteInfo = NanoCue;
+                };
+                FFB0AB622E7B000100000001 /* PBXContainerItemProxy */ = {
+                        isa = PBXContainerItemProxy;
+                        containerPortal = FFAF11C72E6A673D00174D91 /* Project object */;
+                        proxyType = 1;
+                        remoteGlobalIDString = FFB0AAB12E7B000100000001;
+                        remoteInfo = CueTimerLiveActivity;
+                };
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		FFAF11CF2E6A673E00174D91 /* NanoCue.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NanoCue.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		FFAF11DC2E6A673F00174D91 /* NanoCueTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NanoCueTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		FFAF11E62E6A673F00174D91 /* NanoCueUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NanoCueUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+                FFAF11CF2E6A673E00174D91 /* NanoCue.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NanoCue.app; sourceTree = BUILT_PRODUCTS_DIR; };
+                FFAF11DC2E6A673F00174D91 /* NanoCueTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NanoCueTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+                FFAF11E62E6A673F00174D91 /* NanoCueUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NanoCueUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+                FFB0AAC12E7B000100000001 /* CueTimerLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = CueTimerLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		FFDE63522E7061A4005A1BBE /* Exceptions for "NanoCue" folder in "NanoCue" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = FFAF11CE2E6A673E00174D91 /* NanoCue */;
-		};
+                FFDE63522E7061A4005A1BBE /* Exceptions for "NanoCue" folder in "NanoCue" target */ = {
+                        isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+                        membershipExceptions = (
+                                Info.plist,
+                        );
+                        target = FFAF11CE2E6A673E00174D91 /* NanoCue */;
+                };
+                FFB0AB522E7B000100000001 /* Exceptions for "NanoCueWidget" folder in "CueTimerLiveActivity" target */ = {
+                        isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+                        membershipExceptions = (
+                                Info.plist,
+                        );
+                        target = FFB0AAB12E7B000100000001 /* CueTimerLiveActivity */;
+                };
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -53,11 +72,19 @@
 			path = NanoCueTests;
 			sourceTree = "<group>";
 		};
-		FFAF11E92E6A673F00174D91 /* NanoCueUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = NanoCueUITests;
-			sourceTree = "<group>";
-		};
+                FFAF11E92E6A673F00174D91 /* NanoCueUITests */ = {
+                        isa = PBXFileSystemSynchronizedRootGroup;
+                        path = NanoCueUITests;
+                        sourceTree = "<group>";
+                };
+                FFB0AAA12E7B000100000001 /* NanoCueWidget */ = {
+                        isa = PBXFileSystemSynchronizedRootGroup;
+                        exceptions = (
+                                FFB0AB522E7B000100000001 /* Exceptions for "NanoCueWidget" folder in "CueTimerLiveActivity" target */,
+                        );
+                        path = NanoCueWidget;
+                        sourceTree = "<group>";
+                };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,47 +102,57 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FFAF11E32E6A673F00174D91 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+                FFAF11E32E6A673F00174D91 /* Frameworks */ = {
+                        isa = PBXFrameworksBuildPhase;
+                        buildActionMask = 2147483647;
+                        files = (
+                        );
+                        runOnlyForDeploymentPostprocessing = 0;
+                };
+                FFB0AAE12E7B000100000001 /* Frameworks */ = {
+                        isa = PBXFrameworksBuildPhase;
+                        buildActionMask = 2147483647;
+                        files = (
+                        );
+                        runOnlyForDeploymentPostprocessing = 0;
+                };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		FFAF11C62E6A673D00174D91 = {
-			isa = PBXGroup;
-			children = (
-				FFAF11D12E6A673E00174D91 /* NanoCue */,
-				FFAF11DF2E6A673F00174D91 /* NanoCueTests */,
-				FFAF11E92E6A673F00174D91 /* NanoCueUITests */,
-				FFAF11D02E6A673E00174D91 /* Products */,
-			);
-			sourceTree = "<group>";
-		};
-		FFAF11D02E6A673E00174D91 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				FFAF11CF2E6A673E00174D91 /* NanoCue.app */,
-				FFAF11DC2E6A673F00174D91 /* NanoCueTests.xctest */,
-				FFAF11E62E6A673F00174D91 /* NanoCueUITests.xctest */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
+                FFAF11C62E6A673D00174D91 = {
+                        isa = PBXGroup;
+                        children = (
+                                FFAF11D12E6A673E00174D91 /* NanoCue */,
+                                FFAF11DF2E6A673F00174D91 /* NanoCueTests */,
+                                FFAF11E92E6A673F00174D91 /* NanoCueUITests */,
+                                FFB0AAA12E7B000100000001 /* NanoCueWidget */,
+                                FFAF11D02E6A673E00174D91 /* Products */,
+                        );
+                        sourceTree = "<group>";
+                };
+                FFAF11D02E6A673E00174D91 /* Products */ = {
+                        isa = PBXGroup;
+                        children = (
+                                FFAF11CF2E6A673E00174D91 /* NanoCue.app */,
+                                FFAF11DC2E6A673F00174D91 /* NanoCueTests.xctest */,
+                                FFAF11E62E6A673F00174D91 /* NanoCueUITests.xctest */,
+                                FFB0AAC12E7B000100000001 /* CueTimerLiveActivity.appex */,
+                        );
+                        name = Products;
+                        sourceTree = "<group>";
+                };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
 		FFAF11CE2E6A673E00174D91 /* NanoCue */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = FFAF11F02E6A673F00174D91 /* Build configuration list for PBXNativeTarget "NanoCue" */;
-			buildPhases = (
-				FFAF11CB2E6A673E00174D91 /* Sources */,
-				FFAF11CC2E6A673E00174D91 /* Frameworks */,
-				FFAF11CD2E6A673E00174D91 /* Resources */,
-			);
+                        buildPhases = (
+                                FFAF11CB2E6A673E00174D91 /* Sources */,
+                                FFAF11CC2E6A673E00174D91 /* Frameworks */,
+                                FFAF11CD2E6A673E00174D91 /* Resources */,
+                                FFB0AB312E7B000100000001 /* Embed App Extensions */,
+                        );
 			buildRules = (
 			);
 			dependencies = (
@@ -153,29 +190,50 @@
 			productReference = FFAF11DC2E6A673F00174D91 /* NanoCueTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		FFAF11E52E6A673F00174D91 /* NanoCueUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = FFAF11F62E6A673F00174D91 /* Build configuration list for PBXNativeTarget "NanoCueUITests" */;
-			buildPhases = (
-				FFAF11E22E6A673F00174D91 /* Sources */,
-				FFAF11E32E6A673F00174D91 /* Frameworks */,
-				FFAF11E42E6A673F00174D91 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				FFAF11E82E6A673F00174D91 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				FFAF11E92E6A673F00174D91 /* NanoCueUITests */,
-			);
-			name = NanoCueUITests;
-			packageProductDependencies = (
-			);
-			productName = NanoCueUITests;
-			productReference = FFAF11E62E6A673F00174D91 /* NanoCueUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
+                FFAF11E52E6A673F00174D91 /* NanoCueUITests */ = {
+                        isa = PBXNativeTarget;
+                        buildConfigurationList = FFAF11F62E6A673F00174D91 /* Build configuration list for PBXNativeTarget "NanoCueUITests" */;
+                        buildPhases = (
+                                FFAF11E22E6A673F00174D91 /* Sources */,
+                                FFAF11E32E6A673F00174D91 /* Frameworks */,
+                                FFAF11E42E6A673F00174D91 /* Resources */,
+                        );
+                        buildRules = (
+                        );
+                        dependencies = (
+                                FFAF11E82E6A673F00174D91 /* PBXTargetDependency */,
+                        );
+                        fileSystemSynchronizedGroups = (
+                                FFAF11E92E6A673F00174D91 /* NanoCueUITests */,
+                        );
+                        name = NanoCueUITests;
+                        packageProductDependencies = (
+                        );
+                        productName = NanoCueUITests;
+                        productReference = FFAF11E62E6A673F00174D91 /* NanoCueUITests.xctest */;
+                        productType = "com.apple.product-type.bundle.ui-testing";
+                };
+                FFB0AAB12E7B000100000001 /* CueTimerLiveActivity */ = {
+                        isa = PBXNativeTarget;
+                        buildConfigurationList = FFB0AB012E7B000100000001 /* Build configuration list for PBXNativeTarget "CueTimerLiveActivity" */;
+                        buildPhases = (
+                                FFB0AAD12E7B000100000001 /* Sources */,
+                                FFB0AAE12E7B000100000001 /* Frameworks */,
+                                FFB0AAF12E7B000100000001 /* Resources */,
+                        );
+                        buildRules = (
+                        );
+                        dependencies = (
+                                FFB0AB632E7B000100000001 /* PBXTargetDependency */,
+                        );
+                        fileSystemSynchronizedGroups = (
+                                FFB0AAA12E7B000100000001 /* NanoCueWidget */,
+                        );
+                        name = CueTimerLiveActivity;
+                        productName = CueTimerLiveActivity;
+                        productReference = FFB0AAC12E7B000100000001 /* CueTimerLiveActivity.appex */;
+                        productType = "com.apple.product-type.app-extension";
+                };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -193,12 +251,15 @@
 						CreatedOnToolsVersion = 26.0;
 						TestTargetID = FFAF11CE2E6A673E00174D91;
 					};
-					FFAF11E52E6A673F00174D91 = {
-						CreatedOnToolsVersion = 26.0;
-						TestTargetID = FFAF11CE2E6A673E00174D91;
-					};
-				};
-			};
+                                        FFAF11E52E6A673F00174D91 = {
+                                                CreatedOnToolsVersion = 26.0;
+                                                TestTargetID = FFAF11CE2E6A673E00174D91;
+                                        };
+                                        FFB0AAB12E7B000100000001 = {
+                                                CreatedOnToolsVersion = 26.0;
+                                        };
+                                };
+                        };
 			buildConfigurationList = FFAF11CA2E6A673D00174D91 /* Build configuration list for PBXProject "NanoCue" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -212,12 +273,13 @@
 			productRefGroup = FFAF11D02E6A673E00174D91 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			targets = (
-				FFAF11CE2E6A673E00174D91 /* NanoCue */,
-				FFAF11DB2E6A673F00174D91 /* NanoCueTests */,
-				FFAF11E52E6A673F00174D91 /* NanoCueUITests */,
-			);
-		};
+                        targets = (
+                                FFAF11CE2E6A673E00174D91 /* NanoCue */,
+                                FFAF11DB2E6A673F00174D91 /* NanoCueTests */,
+                                FFAF11E52E6A673F00174D91 /* NanoCueUITests */,
+                                FFB0AAB12E7B000100000001 /* CueTimerLiveActivity */,
+                        );
+                };
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
@@ -235,14 +297,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FFAF11E42E6A673F00174D91 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+                FFAF11E42E6A673F00174D91 /* Resources */ = {
+                        isa = PBXResourcesBuildPhase;
+                        buildActionMask = 2147483647;
+                        files = (
+                        );
+                        runOnlyForDeploymentPostprocessing = 0;
+                };
+                FFB0AAF12E7B000100000001 /* Resources */ = {
+                        isa = PBXResourcesBuildPhase;
+                        buildActionMask = 2147483647;
+                        files = (
+                        );
+                        runOnlyForDeploymentPostprocessing = 0;
+                };
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+                FFB0AB312E7B000100000001 /* Embed App Extensions */ = {
+                        isa = PBXCopyFilesBuildPhase;
+                        buildActionMask = 2147483647;
+                        dstSubfolderSpec = 13;
+                        files = (
+                                FFB0AB412E7B000100000001 /* CueTimerLiveActivity.appex in Embed App Extensions */,
+                        );
+                        name = "Embed App Extensions";
+                        runOnlyForDeploymentPostprocessing = 0;
+                };
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		FFAF11CB2E6A673E00174D91 /* Sources */ = {
@@ -259,13 +341,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FFAF11E22E6A673F00174D91 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+                FFAF11E22E6A673F00174D91 /* Sources */ = {
+                        isa = PBXSourcesBuildPhase;
+                        buildActionMask = 2147483647;
+                        files = (
+                        );
+                        runOnlyForDeploymentPostprocessing = 0;
+                };
+                FFB0AAD12E7B000100000001 /* Sources */ = {
+                        isa = PBXSourcesBuildPhase;
+                        buildActionMask = 2147483647;
+                        files = (
+                        );
+                        runOnlyForDeploymentPostprocessing = 0;
+                };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -274,11 +363,16 @@
 			target = FFAF11CE2E6A673E00174D91 /* NanoCue */;
 			targetProxy = FFAF11DD2E6A673F00174D91 /* PBXContainerItemProxy */;
 		};
-		FFAF11E82E6A673F00174D91 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = FFAF11CE2E6A673E00174D91 /* NanoCue */;
-			targetProxy = FFAF11E72E6A673F00174D91 /* PBXContainerItemProxy */;
-		};
+                FFAF11E82E6A673F00174D91 /* PBXTargetDependency */ = {
+                        isa = PBXTargetDependency;
+                        target = FFAF11CE2E6A673E00174D91 /* NanoCue */;
+                        targetProxy = FFAF11E72E6A673F00174D91 /* PBXContainerItemProxy */;
+                };
+                FFB0AB632E7B000100000001 /* PBXTargetDependency */ = {
+                        isa = PBXTargetDependency;
+                        target = FFB0AAB12E7B000100000001 /* CueTimerLiveActivity */;
+                        targetProxy = FFB0AB622E7B000100000001 /* PBXContainerItemProxy */;
+                };
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -569,31 +663,57 @@
 			};
 			name = Debug;
 		};
-		FFAF11F82E6A673F00174D91 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = PZH8SHAZDS;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.konst.NanoCueUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = NanoCue;
-				XROS_DEPLOYMENT_TARGET = 26.0;
-			};
-			name = Release;
-		};
+                FFAF11F82E6A673F00174D91 /* Release */ = {
+                        isa = XCBuildConfiguration;
+                        buildSettings = {
+                                CODE_SIGN_STYLE = Automatic;
+                                CURRENT_PROJECT_VERSION = 1;
+                                DEVELOPMENT_TEAM = PZH8SHAZDS;
+                                GENERATE_INFOPLIST_FILE = YES;
+                                IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+                                MACOSX_DEPLOYMENT_TARGET = 26.0;
+                                MARKETING_VERSION = 1.0;
+                                PRODUCT_BUNDLE_IDENTIFIER = dev.konst.NanoCueUITests;
+                                PRODUCT_NAME = "$(TARGET_NAME)";
+                                SDKROOT = auto;
+                                STRING_CATALOG_GENERATE_SYMBOLS = NO;
+                                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+                                SWIFT_APPROACHABLE_CONCURRENCY = YES;
+                                SWIFT_EMIT_LOC_STRINGS = NO;
+                                SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+                                SWIFT_VERSION = 5.0;
+                                TARGETED_DEVICE_FAMILY = "1,2,7";
+                                TEST_TARGET_NAME = NanoCue;
+                                XROS_DEPLOYMENT_TARGET = 26.0;
+                        };
+                        name = Release;
+                };
+                FFB0AB112E7B000100000001 /* Debug */ = {
+                        isa = XCBuildConfiguration;
+                        buildSettings = {
+                                CODE_SIGN_STYLE = Automatic;
+                                DEVELOPMENT_TEAM = PZH8SHAZDS;
+                                INFOPLIST_FILE = NanoCueWidget/Info.plist;
+                                PRODUCT_BUNDLE_IDENTIFIER = dev.konst.NanoCue2.CueTimerLiveActivity;
+                                PRODUCT_NAME = "$(TARGET_NAME)";
+                                SKIP_INSTALL = YES;
+                                TARGETED_DEVICE_FAMILY = "1,2";
+                        };
+                        name = Debug;
+                };
+                FFB0AB212E7B000100000001 /* Release */ = {
+                        isa = XCBuildConfiguration;
+                        buildSettings = {
+                                CODE_SIGN_STYLE = Automatic;
+                                DEVELOPMENT_TEAM = PZH8SHAZDS;
+                                INFOPLIST_FILE = NanoCueWidget/Info.plist;
+                                PRODUCT_BUNDLE_IDENTIFIER = dev.konst.NanoCue2.CueTimerLiveActivity;
+                                PRODUCT_NAME = "$(TARGET_NAME)";
+                                SKIP_INSTALL = YES;
+                                TARGETED_DEVICE_FAMILY = "1,2";
+                        };
+                        name = Release;
+                };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -624,15 +744,24 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		FFAF11F62E6A673F00174D91 /* Build configuration list for PBXNativeTarget "NanoCueUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				FFAF11F72E6A673F00174D91 /* Debug */,
-				FFAF11F82E6A673F00174D91 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
+                FFAF11F62E6A673F00174D91 /* Build configuration list for PBXNativeTarget "NanoCueUITests" */ = {
+                        isa = XCConfigurationList;
+                        buildConfigurations = (
+                                FFAF11F72E6A673F00174D91 /* Debug */,
+                                FFAF11F82E6A673F00174D91 /* Release */,
+                        );
+                        defaultConfigurationIsVisible = 0;
+                        defaultConfigurationName = Release;
+                };
+                FFB0AB012E7B000100000001 /* Build configuration list for PBXNativeTarget "CueTimerLiveActivity" */ = {
+                        isa = XCConfigurationList;
+                        buildConfigurations = (
+                                FFB0AB112E7B000100000001 /* Debug */,
+                                FFB0AB212E7B000100000001 /* Release */,
+                        );
+                        defaultConfigurationIsVisible = 0;
+                        defaultConfigurationName = Release;
+                };
 /* End XCConfigurationList section */
 	};
 	rootObject = FFAF11C72E6A673D00174D91 /* Project object */;
