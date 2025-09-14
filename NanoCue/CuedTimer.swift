@@ -32,8 +32,8 @@ enum TickVolume: String, CaseIterable {
     // Relative to system volume (AVAudioPlayer volume is 0.0 ... 1.0)
     var volumeFactor: Float {
         switch self {
-        case .low: return 0.5
-        case .medium: return 0.75
+        case .low: return 0.05
+        case .medium: return 0.2
         case .high: return 1.0
         }
     }
@@ -63,7 +63,8 @@ final class CuedTimer: NSObject {
         set {
             self.withMutation(keyPath: \CuedTimer.tickVolume) {
                 tickVolumeStorage = newValue.rawValue
-                playerNode?.volume = newValue.volumeFactor
+                // Control the dedicated tick mixer node so it affects the tick path.
+                tickMixerNode?.outputVolume = newValue.volumeFactor
             }
         }
     }
@@ -75,11 +76,16 @@ final class CuedTimer: NSObject {
     // Audio engine for background-safe ticking
     @ObservationIgnored private var engine: AVAudioEngine?
     @ObservationIgnored private var playerNode: AVAudioPlayerNode?
+    @ObservationIgnored private var tickMixerNode: AVAudioMixerNode?
+    @ObservationIgnored private var bedSourceNode: AVAudioSourceNode?
     @ObservationIgnored private var tickBuffer: AVAudioPCMBuffer?
     @ObservationIgnored private var schedulingTask: Task<Void, Never>?
     @ObservationIgnored private var startSample: AVAudioFramePosition?
     @ObservationIgnored private var nextScheduledSample: AVAudioFramePosition?
     @ObservationIgnored private let tickIntervalSeconds: Double = 5.0
+    #if os(iOS)
+    @ObservationIgnored private var lastLiveActivityUpdate: Date = .distantPast
+    #endif
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
     #if os(iOS)
     @ObservationIgnored var liveActivity: Activity<CueTimerAttributes>?
@@ -226,7 +232,18 @@ final class CuedTimer: NSObject {
     private func setupAudioEngine() {
         let engine = AVAudioEngine()
         let player = AVAudioPlayerNode()
+        let tickMixer = AVAudioMixerNode()
+        let bed = AVAudioSourceNode { _, _, frameCount, audioBufferList -> OSStatus in
+            let abl = UnsafeMutableAudioBufferListPointer(audioBufferList)
+            for buffer in abl {
+                if let m = buffer.mData { memset(m, 0, Int(buffer.mDataByteSize)) }
+            }
+            return noErr
+        }
+
         engine.attach(player)
+        engine.attach(tickMixer)
+        engine.attach(bed)
 
         // Load the tick from bundle into a PCM buffer
         if let url = Bundle.main.url(forResource: "Tink", withExtension: "aiff") {
@@ -237,8 +254,15 @@ final class CuedTimer: NSObject {
                 try file.read(into: buffer)
                 tickBuffer = buffer
 
-                // Connect player to the main mixer with the file's format
-                engine.connect(player, to: engine.mainMixerNode, format: format)
+                // Route: player -> tickMixer -> mainMixer
+                engine.connect(player, to: tickMixer, format: format)
+                // Keep graph rendering with a silent bed into the same mixer
+                let hw = engine.outputNode.outputFormat(forBus: 0)
+                engine.connect(bed, to: tickMixer, format: hw)
+                engine.connect(tickMixer, to: engine.mainMixerNode, format: nil)
+
+                // Initialize tick mixer volume to stored preference
+                tickMixer.outputVolume = tickVolume.volumeFactor
             } catch {
                 log.error("Failed to load tick sound: \(error.localizedDescription)")
             }
@@ -248,17 +272,22 @@ final class CuedTimer: NSObject {
 
         self.engine = engine
         self.playerNode = player
+        self.tickMixerNode = tickMixer
+        self.bedSourceNode = bed
     }
 
     private func startEngineLoop() {
-        guard let engine, let player = playerNode, let tickBuffer else { return }
+        guard let engine, let playerNode, let tickBuffer else { return }
         if !engine.isRunning {
-            do { try engine.start() } catch {
+            do {
+                try engine.start()
+            } catch {
                 log.error("Engine start failed: \(error.localizedDescription)")
             }
         }
-        if !player.isPlaying { player.play() }
-        player.volume = tickVolume.volumeFactor
+        if !playerNode.isPlaying { playerNode.play() }
+        // Apply current tick volume to the dedicated mixer node.
+        tickMixerNode?.outputVolume = tickVolume.volumeFactor
 
         // Align first tick to +5s from now and keep ~20s scheduled ahead
         schedulingTask?.cancel()
@@ -296,10 +325,34 @@ final class CuedTimer: NSObject {
                 }
                 self.nextScheduledSample = nextSample
 
+                #if os(iOS)
+                // Nudge the Live Activity to refresh about once per second on the main actor
+                await self.updateLiveActivityIfNeeded()
+                #endif
+
                 try? await Task.sleep(nanoseconds: 300_000_000)
             }
         }
     }
+
+#if os(iOS)
+    private func updateLiveActivityIfNeeded() async {
+        guard let activityID = self.liveActivity?.id else { return }
+        
+        let comps = elapsed.components
+        let totalSeconds = Double(comps.seconds) + Double(comps.attoseconds) * 1e-18
+
+        let now = Date()
+        if now.timeIntervalSince(self.lastLiveActivityUpdate) <= 1.0 { return }
+        
+        if let activity = Activity<CueTimerAttributes>.activities.first(where: { $0.id == activityID }) {
+            let state = CueTimerAttributes.ContentState(startDate: Date(timeIntervalSinceNow: -totalSeconds))
+            let content = ActivityContent(state: state, staleDate: nil)
+            await activity.update(content)
+            self.lastLiveActivityUpdate = now
+        }
+    }
+#endif
 
     private func stopEngineLoop() {
         schedulingTask?.cancel()
