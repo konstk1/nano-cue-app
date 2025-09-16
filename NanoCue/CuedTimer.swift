@@ -85,7 +85,7 @@ final class CuedTimer: NSObject {
     @ObservationIgnored private var nextScheduledSample: AVAudioFramePosition?
     @ObservationIgnored private let tickIntervalSeconds: Double = 5.0
     #if os(iOS)
-    @ObservationIgnored private var lastLiveActivityUpdate: Date = .distantPast
+    @ObservationIgnored var lastLiveActivityUpdate: Date = .distantPast
     #endif
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
     #if os(iOS)
@@ -185,10 +185,13 @@ final class CuedTimer: NSObject {
     }
 
     // MARK: - Formatting & cues
+    static func seconds(for duration: Duration) -> Double {
+        let comps = duration.components
+        return Double(comps.seconds) + Double(comps.attoseconds) * 1e-18
+    }
+
     private func updateFormatted() {
-        // Convert Duration to Double seconds for math/formatting
-        let comps = elapsed.components
-        let totalSeconds = Double(comps.seconds) + Double(comps.attoseconds) * 1e-18
+        let totalSeconds = Self.seconds(for: elapsed)
 
         let minutes = Int(totalSeconds / 60.0)
         let seconds = totalSeconds.truncatingRemainder(dividingBy: 60.0)
@@ -198,8 +201,7 @@ final class CuedTimer: NSObject {
     }
 
     private func announceSideEffects() {
-        let comps = elapsed.components
-        let totalSeconds = Double(comps.seconds) + Double(comps.attoseconds) * 1e-18
+        let totalSeconds = Self.seconds(for: elapsed)
         let p = precision.components
         let precisionSeconds = Double(p.seconds) + Double(p.attoseconds) * 1e-18
 
@@ -353,15 +355,19 @@ final class CuedTimer: NSObject {
         guard let activity = liveActivity else { return }
 
         let now = Date()
-        guard now.timeIntervalSince(lastLiveActivityUpdate) >= 1.0 else { return }
+        guard now.timeIntervalSince(lastLiveActivityUpdate) >= 0.5 else { return }
 
-        let comps = elapsed.components
-        let totalSeconds = Double(comps.seconds) + Double(comps.attoseconds) * 1e-18
-        let state = CuedTimerAttributes.ContentState(elapsedSec: totalSeconds)
-        let content = ActivityContent(state: state, staleDate: nil)
+        let elapsedSeconds = Self.seconds(for: elapsed)
+        let startDate = now.addingTimeInterval(-elapsedSeconds)
+        let state = CuedTimerAttributes.ContentState(startDate: startDate, elapsedSec: elapsedSeconds)
+        let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(10))
 
-        await activity.update(content)
-        lastLiveActivityUpdate = now
+        do {
+            try await activity.update(content)
+            lastLiveActivityUpdate = now
+        } catch {
+            log.error("Live Activity update failed: \(error.localizedDescription)")
+        }
     }
 #endif
 

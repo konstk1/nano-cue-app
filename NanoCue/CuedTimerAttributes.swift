@@ -4,7 +4,7 @@ import ActivityKit
 
 struct CuedTimerAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
-//        var startDate: Date
+        var startDate: Date
         var elapsedSec: TimeInterval
     }
 }

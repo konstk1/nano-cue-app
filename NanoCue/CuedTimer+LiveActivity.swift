@@ -7,9 +7,23 @@ import os
 extension CuedTimer {
 
     func startLiveActivity() {
+        let now = Date()
+        let elapsedSeconds = Self.seconds(for: elapsed)
+        let state = CuedTimerAttributes.ContentState(startDate: now.addingTimeInterval(-elapsedSeconds),
+                                                     elapsedSec: elapsedSeconds)
+        let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(10))
+
         // Avoid multiple requests; reuse if one exists
         if let existing = Activity<CuedTimerAttributes>.activities.first {
             self.liveActivity = existing
+            Task {
+                do {
+                    try await existing.update(content)
+                    await MainActor.run { self.lastLiveActivityUpdate = now }
+                } catch {
+                    os.Logger(subsystem: Bundle.main.bundleIdentifier ?? "NanoCue", category: "live-activity").error("Activity.update failed: \(error.localizedDescription)")
+                }
+            }
             return
         }
 
@@ -21,10 +35,9 @@ extension CuedTimer {
         }
 
         let attributes = CuedTimerAttributes()
-        let state = CuedTimerAttributes.ContentState(elapsedSec: 5.0)
         do {
-            let content = ActivityContent(state: state, staleDate: nil)
             self.liveActivity = try Activity.request(attributes: attributes, content: content)
+            lastLiveActivityUpdate = now
         } catch {
             os.Logger(subsystem: Bundle.main.bundleIdentifier ?? "NanoCue", category: "live-activity").error("Activity.request failed: \(error.localizedDescription)")
         }
@@ -34,6 +47,7 @@ extension CuedTimer {
         // Capture and clear on the main actor to avoid data races
         guard let activity = self.liveActivity else { return }
         self.liveActivity = nil
+        lastLiveActivityUpdate = .distantPast
         Task {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
