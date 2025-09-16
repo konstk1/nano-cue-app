@@ -5,9 +5,10 @@ import SwiftUI
 @main
 struct CueTimerLiveActivity: Widget {
     var body: some WidgetConfiguration {
-        ActivityConfiguration(for: CueTimerAttributes.self) { context in
+        ActivityConfiguration(for: CuedTimerAttributes.self) { context in
             VStack {
-                Text(timerInterval: context.state.startDate...Date(), countsDown: false)
+//                Text(timerInterval: context.state.startDate...Date(), countsDown: false)
+                Text("\(context.state.elapsedSec)")
                     .font(.system(.title, design: .monospaced))
                     .monospacedDigit()
             }
@@ -16,17 +17,20 @@ struct CueTimerLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.center) {
-                    Text(timerInterval: context.state.startDate...Date(), countsDown: false)
+//                    Text(timerInterval: context.state.startDate...Date(), countsDown: false)
+                    Text("\(context.state.elapsedSec)")
                         .font(.title.monospacedDigit())
                 }
             } compactLeading: {
-                Text(timerInterval: context.state.startDate...Date(), countsDown: false)
-                    .font(.headline.monospacedDigit())
+//                Text(timerInterval: context.state.startDate...Date(), countsDown: false)
+                Text("\(context.state.elapsedSec)").font(.headline.monospacedDigit())
             } compactTrailing: {
-                Text(timerInterval: context.state.startDate...Date(), countsDown: false)
+//                Text(timerInterval: context.state.startDate...Date(), countsDown: false)
+                Text("\(context.state.elapsedSec)")
                     .font(.headline.monospacedDigit())
             } minimal: {
-                Text(timerInterval: context.state.startDate...Date(), countsDown: false)
+//                Text(timerInterval: context.state.startDate...Date(), countsDown: false)
+                Text("\(context.state.elapsedSec)")
                     .font(.caption.monospacedDigit())
             }
         }

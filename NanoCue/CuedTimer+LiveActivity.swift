@@ -8,22 +8,20 @@ extension CuedTimer {
 
     func startLiveActivity() {
         // Avoid multiple requests; reuse if one exists
-        if let existing = Activity<CueTimerAttributes>.activities.first {
+        if let existing = Activity<CuedTimerAttributes>.activities.first {
             self.liveActivity = existing
             return
         }
 
-        // Request notification permission once to ensure Live Activities can show on Lock Screen
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+//        // Request notification permission once to ensure Live Activities can show on Lock Screen
+//        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
 
-        let info = ActivityAuthorizationInfo()
-        if !info.areActivitiesEnabled {
-            os.Logger(subsystem: Bundle.main.bundleIdentifier ?? "NanoCue", category: "live-activity").warning("Live Activities disabled or unsupported: \(String(describing: info))")
-            // Still attempt request; system may ignore if disabled
+        if !ActivityAuthorizationInfo().areActivitiesEnabled {
+            os.Logger(subsystem: Bundle.main.bundleIdentifier ?? "NanoCue", category: "live-activity").warning("Live Activities disabled or unsupported")
         }
 
-        let attributes = CueTimerAttributes()
-        let state = CueTimerAttributes.ContentState(startDate: Date())
+        let attributes = CuedTimerAttributes()
+        let state = CuedTimerAttributes.ContentState(elapsedSec: 5.0)
         do {
             let content = ActivityContent(state: state, staleDate: nil)
             self.liveActivity = try Activity.request(attributes: attributes, content: content)
@@ -34,12 +32,10 @@ extension CuedTimer {
 
     func endLiveActivity() {
         // Capture and clear on the main actor to avoid data races
-        let activity = self.liveActivity
+        guard let activity = self.liveActivity else { return }
         self.liveActivity = nil
         Task {
-            if let activity {
-                await activity.end(nil, dismissalPolicy: .immediate)
-            }
+            await activity.end(nil, dismissalPolicy: .immediate)
         }
     }
 }

@@ -88,7 +88,7 @@ final class CuedTimer: NSObject {
     #endif
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
     #if os(iOS)
-    @ObservationIgnored var liveActivity: Activity<CueTimerAttributes>?
+    @ObservationIgnored var liveActivity: Activity<CuedTimerAttributes>?
     #endif
 
     // Haptics (iOS only)
@@ -345,10 +345,11 @@ final class CuedTimer: NSObject {
         let now = Date()
         if now.timeIntervalSince(self.lastLiveActivityUpdate) <= 1.0 { return }
         
-        if let activity = Activity<CueTimerAttributes>.activities.first(where: { $0.id == activityID }) {
-            let state = CueTimerAttributes.ContentState(startDate: Date(timeIntervalSinceNow: -totalSeconds))
+        if let activity = Activity<CuedTimerAttributes>.activities.first(where: { $0.id == activityID }) {
+            let state = CuedTimerAttributes.ContentState(elapsedSec: 7)
+            
             let content = ActivityContent(state: state, staleDate: nil)
-            await activity.update(content)
+//            await activity.update(content)
             self.lastLiveActivityUpdate = now
         }
     }

@@ -2,9 +2,10 @@
 import Foundation
 import ActivityKit
 
-struct CueTimerAttributes: ActivityAttributes {
+struct CuedTimerAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
-        var startDate: Date
+//        var startDate: Date
+        var elapsedSec: TimeInterval
     }
 }
 #endif
