@@ -13,7 +13,7 @@ import SwiftUI
 
 #if os(iOS)
 import UIKit
-import ActivityKit
+@preconcurrency import ActivityKit
 #endif
 
 enum TickVolume: String, CaseIterable {
@@ -77,7 +77,8 @@ final class CuedTimer: NSObject {
     @ObservationIgnored private var engine: AVAudioEngine?
     @ObservationIgnored private var playerNode: AVAudioPlayerNode?
     @ObservationIgnored private var tickMixerNode: AVAudioMixerNode?
-    @ObservationIgnored private var bedSourceNode: AVAudioSourceNode?
+    @ObservationIgnored private var bedPlayerNode: AVAudioPlayerNode?
+    @ObservationIgnored private var bedBuffer: AVAudioPCMBuffer?
     @ObservationIgnored private var tickBuffer: AVAudioPCMBuffer?
     @ObservationIgnored private var schedulingTask: Task<Void, Never>?
     @ObservationIgnored private var startSample: AVAudioFramePosition?
@@ -156,6 +157,9 @@ final class CuedTimer: NSObject {
                         } else {
                             self.elapsed += precision
                         }
+#if os(iOS)
+                        await self.updateLiveActivityIfNeeded()
+#endif
                         self.announceSideEffects()
                     }
                 }
@@ -233,17 +237,11 @@ final class CuedTimer: NSObject {
         let engine = AVAudioEngine()
         let player = AVAudioPlayerNode()
         let tickMixer = AVAudioMixerNode()
-        let bed = AVAudioSourceNode { _, _, frameCount, audioBufferList -> OSStatus in
-            let abl = UnsafeMutableAudioBufferListPointer(audioBufferList)
-            for buffer in abl {
-                if let m = buffer.mData { memset(m, 0, Int(buffer.mDataByteSize)) }
-            }
-            return noErr
-        }
+        let bedPlayer = AVAudioPlayerNode()
 
         engine.attach(player)
         engine.attach(tickMixer)
-        engine.attach(bed)
+        engine.attach(bedPlayer)
 
         // Load the tick from bundle into a PCM buffer
         if let url = Bundle.main.url(forResource: "Tink", withExtension: "aiff") {
@@ -258,8 +256,20 @@ final class CuedTimer: NSObject {
                 engine.connect(player, to: tickMixer, format: format)
                 // Keep graph rendering with a silent bed into the same mixer
                 let hw = engine.outputNode.outputFormat(forBus: 0)
-                engine.connect(bed, to: tickMixer, format: hw)
+                engine.connect(bedPlayer, to: tickMixer, format: hw)
                 engine.connect(tickMixer, to: engine.mainMixerNode, format: nil)
+
+                let framesPerSecond = AVAudioFrameCount(hw.sampleRate.rounded())
+                if let silentBuffer = AVAudioPCMBuffer(pcmFormat: hw, frameCapacity: framesPerSecond) {
+                    silentBuffer.frameLength = framesPerSecond
+                    let abl = UnsafeMutableAudioBufferListPointer(silentBuffer.mutableAudioBufferList)
+                    for buffer in abl {
+                        if let data = buffer.mData {
+                            memset(data, 0, Int(buffer.mDataByteSize))
+                        }
+                    }
+                    bedBuffer = silentBuffer
+                }
 
                 // Initialize tick mixer volume to stored preference
                 tickMixer.outputVolume = tickVolume.volumeFactor
@@ -273,7 +283,7 @@ final class CuedTimer: NSObject {
         self.engine = engine
         self.playerNode = player
         self.tickMixerNode = tickMixer
-        self.bedSourceNode = bed
+        self.bedPlayerNode = bedPlayer
     }
 
     private func startEngineLoop() {
@@ -286,6 +296,14 @@ final class CuedTimer: NSObject {
             }
         }
         if !playerNode.isPlaying { playerNode.play() }
+        if let bedPlayer = bedPlayerNode {
+            if !bedPlayer.isPlaying {
+                if let silentBuffer = bedBuffer {
+                    bedPlayer.scheduleBuffer(silentBuffer, at: nil, options: [.loops])
+                }
+                bedPlayer.play()
+            }
+        }
         // Apply current tick volume to the dedicated mixer node.
         tickMixerNode?.outputVolume = tickVolume.volumeFactor
 
@@ -325,11 +343,6 @@ final class CuedTimer: NSObject {
                 }
                 self.nextScheduledSample = nextSample
 
-                #if os(iOS)
-                // Nudge the Live Activity to refresh about once per second on the main actor
-                await self.updateLiveActivityIfNeeded()
-                #endif
-
                 try? await Task.sleep(nanoseconds: 300_000_000)
             }
         }
@@ -337,21 +350,18 @@ final class CuedTimer: NSObject {
 
 #if os(iOS)
     private func updateLiveActivityIfNeeded() async {
-        guard let activityID = self.liveActivity?.id else { return }
-        
-        let comps = elapsed.components
-        let totalSeconds = Double(comps.seconds) + Double(comps.attoseconds) * 1e-18
+        guard let activity = liveActivity else { return }
 
         let now = Date()
-        if now.timeIntervalSince(self.lastLiveActivityUpdate) <= 1.0 { return }
-        
-        if let activity = Activity<CuedTimerAttributes>.activities.first(where: { $0.id == activityID }) {
-            let state = CuedTimerAttributes.ContentState(elapsedSec: 7)
-            
-            let content = ActivityContent(state: state, staleDate: nil)
-//            await activity.update(content)
-            self.lastLiveActivityUpdate = now
-        }
+        guard now.timeIntervalSince(lastLiveActivityUpdate) >= 1.0 else { return }
+
+        let comps = elapsed.components
+        let totalSeconds = Double(comps.seconds) + Double(comps.attoseconds) * 1e-18
+        let state = CuedTimerAttributes.ContentState(elapsedSec: totalSeconds)
+        let content = ActivityContent(state: state, staleDate: nil)
+
+        await activity.update(content)
+        lastLiveActivityUpdate = now
     }
 #endif
 
@@ -362,6 +372,12 @@ final class CuedTimer: NSObject {
         nextScheduledSample = nil
         guard let player = playerNode else { return }
         if player.isPlaying { player.stop() }
+        if let bedPlayer = bedPlayerNode {
+            if bedPlayer.isPlaying {
+                bedPlayer.stop()
+            }
+            bedPlayer.reset()
+        }
         // Keep engine alive but idle; it will suspend when not used
     }
 }
