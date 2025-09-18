@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		FFB0AB412E7B000100000001 /* CueTimerLiveActivity.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = FFB0AAC12E7B000100000001 /* CueTimerLiveActivity.appex */; platformFilter = ios; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,43 +24,18 @@
 			remoteGlobalIDString = FFAF11CE2E6A673E00174D91;
 			remoteInfo = NanoCue;
 		};
-		FFB0AB622E7B000100000001 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = FFAF11C72E6A673D00174D91 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = FFB0AAB12E7B000100000001;
-			remoteInfo = CueTimerLiveActivity;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		FFB0AB312E7B000100000001 /* Embed App Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstSubfolderSpec = 13;
-			files = (
-				FFB0AB412E7B000100000001 /* CueTimerLiveActivity.appex in Embed App Extensions */,
-			);
-			name = "Embed App Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		FFAF11CF2E6A673E00174D91 /* NanoCue.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NanoCue.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FFAF11DC2E6A673F00174D91 /* NanoCueTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NanoCueTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FFAF11E62E6A673F00174D91 /* NanoCueUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NanoCueUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		FFB0AAC12E7B000100000001 /* CueTimerLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CueTimerLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		FFB0AB522E7B000100000001 /* Exceptions for "NanoCueWidget" folder in "CueTimerLiveActivity" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = FFB0AAB12E7B000100000001 /* CueTimerLiveActivity */;
-		};
 		FFDE63522E7061A4005A1BBE /* Exceptions for "NanoCue" folder in "NanoCue" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -76,14 +50,6 @@
 				NanoCueUITestsLaunchTests.swift,
 			);
 			target = FFAF11E52E6A673F00174D91 /* NanoCueUITests */;
-		};
-		FFDE63B12E760E22005A1BBE /* Exceptions for "NanoCueUITests" folder in "CueTimerLiveActivity" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				NanoCueUITests.swift,
-				NanoCueUITestsLaunchTests.swift,
-			);
-			target = FFB0AAB12E7B000100000001 /* CueTimerLiveActivity */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -101,18 +67,9 @@
 			path = NanoCueTests;
 			sourceTree = "<group>";
 		};
-		FFB0AAA12E7B000100000001 /* NanoCueWidget */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				FFB0AB522E7B000100000001 /* Exceptions for "NanoCueWidget" folder in "CueTimerLiveActivity" target */,
-			);
-			path = NanoCueWidget;
-			sourceTree = "<group>";
-		};
 		FFDE63AD2E760E22005A1BBE /* NanoCueUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				FFDE63B12E760E22005A1BBE /* Exceptions for "NanoCueUITests" folder in "CueTimerLiveActivity" target */,
 				FFDE63B02E760E22005A1BBE /* Exceptions for "NanoCueUITests" folder in "NanoCueUITests" target */,
 			);
 			path = NanoCueUITests;
@@ -156,7 +113,6 @@
 			isa = PBXGroup;
 			children = (
 				FFAF11D12E6A673E00174D91 /* NanoCue */,
-				FFB0AAA12E7B000100000001 /* NanoCueWidget */,
 				FFAF11DF2E6A673F00174D91 /* NanoCueTests */,
 				FFDE63AD2E760E22005A1BBE /* NanoCueUITests */,
 				FFAF11D02E6A673E00174D91 /* Products */,
@@ -169,7 +125,6 @@
 				FFAF11CF2E6A673E00174D91 /* NanoCue.app */,
 				FFAF11DC2E6A673F00174D91 /* NanoCueTests.xctest */,
 				FFAF11E62E6A673F00174D91 /* NanoCueUITests.xctest */,
-				FFB0AAC12E7B000100000001 /* CueTimerLiveActivity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -184,7 +139,6 @@
 				FFAF11CB2E6A673E00174D91 /* Sources */,
 				FFAF11CC2E6A673E00174D91 /* Frameworks */,
 				FFAF11CD2E6A673E00174D91 /* Resources */,
-				FFB0AB312E7B000100000001 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
@@ -243,28 +197,7 @@
 			productReference = FFAF11E62E6A673F00174D91 /* NanoCueUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		FFB0AAB12E7B000100000001 /* CueTimerLiveActivity */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = FFB0AB012E7B000100000001 /* Build configuration list for PBXNativeTarget "CueTimerLiveActivity" */;
-			buildPhases = (
-				FFB0AAD12E7B000100000001 /* Sources */,
-				FFB0AAE12E7B000100000001 /* Frameworks */,
-				FFB0AAF12E7B000100000001 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				FFB0AB632E7B000100000001 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				FFB0AAA12E7B000100000001 /* NanoCueWidget */,
-				FFDE63AD2E760E22005A1BBE /* NanoCueUITests */,
-			);
-			name = CueTimerLiveActivity;
-			productName = CueTimerLiveActivity;
-			productReference = FFB0AAC12E7B000100000001 /* CueTimerLiveActivity.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
+
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -306,7 +239,6 @@
 			projectRoot = "";
 			targets = (
 				FFAF11CE2E6A673E00174D91 /* NanoCue */,
-				FFB0AAB12E7B000100000001 /* CueTimerLiveActivity */,
 				FFAF11DB2E6A673F00174D91 /* NanoCueTests */,
 				FFAF11E52E6A673F00174D91 /* NanoCueUITests */,
 			);
@@ -388,7 +320,6 @@
 		};
 		FFB0AB632E7B000100000001 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = FFB0AAB12E7B000100000001 /* CueTimerLiveActivity */;
 			targetProxy = FFB0AB622E7B000100000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -708,44 +639,6 @@
 			};
 			name = Release;
 		};
-		FFB0AB112E7B000100000001 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 5C4SR67484;
-				INFOPLIST_FILE = NanoCueWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.konst.NanoCue2.CueTimerLiveActivity;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		FFB0AB212E7B000100000001 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 5C4SR67484;
-				INFOPLIST_FILE = NanoCueWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.konst.NanoCue2.CueTimerLiveActivity;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -781,15 +674,6 @@
 			buildConfigurations = (
 				FFAF11F72E6A673F00174D91 /* Debug */,
 				FFAF11F82E6A673F00174D91 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		FFB0AB012E7B000100000001 /* Build configuration list for PBXNativeTarget "CueTimerLiveActivity" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				FFB0AB112E7B000100000001 /* Debug */,
-				FFB0AB212E7B000100000001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

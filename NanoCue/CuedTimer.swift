@@ -13,7 +13,6 @@ import SwiftUI
 
 #if os(iOS)
 import UIKit
-@preconcurrency import ActivityKit
 #endif
 
 enum TickVolume: String, CaseIterable {
@@ -84,13 +83,7 @@ final class CuedTimer: NSObject {
     @ObservationIgnored private var startSample: AVAudioFramePosition?
     @ObservationIgnored private var nextScheduledSample: AVAudioFramePosition?
     @ObservationIgnored private let tickIntervalSeconds: Double = 5.0
-    #if os(iOS)
-    @ObservationIgnored var lastLiveActivityUpdate: Date = .distantPast
-    #endif
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
-    #if os(iOS)
-    @ObservationIgnored var liveActivity: Activity<CuedTimerAttributes>?
-    #endif
 
     // Haptics (iOS only)
     #if os(iOS)
@@ -133,9 +126,6 @@ final class CuedTimer: NSObject {
     func start() {
         if tickerTask == nil {
             startEngineLoop()
-#if os(iOS)
-            startLiveActivity()
-#endif
             // Notify that `isRunning` (computed) will change
             self.withMutation(keyPath: \CuedTimer.isRunning) {
                 tickerTask = Task { [weak self] in
@@ -157,9 +147,6 @@ final class CuedTimer: NSObject {
                         } else {
                             self.elapsed += precision
                         }
-#if os(iOS)
-                        await self.updateLiveActivityIfNeeded()
-#endif
                         self.announceSideEffects()
                     }
                 }
@@ -175,9 +162,6 @@ final class CuedTimer: NSObject {
             tickerTask = nil
         }
         stopEngineLoop()
-#if os(iOS)
-        endLiveActivity()
-#endif
     }
 
     func reset() {
@@ -349,27 +333,6 @@ final class CuedTimer: NSObject {
             }
         }
     }
-
-#if os(iOS)
-    private func updateLiveActivityIfNeeded() async {
-        guard let activity = liveActivity else { return }
-
-        let now = Date()
-        guard now.timeIntervalSince(lastLiveActivityUpdate) >= 0.5 else { return }
-
-        let elapsedSeconds = Self.seconds(for: elapsed)
-        let startDate = now.addingTimeInterval(-elapsedSeconds)
-        let state = CuedTimerAttributes.ContentState(startDate: startDate, elapsedSec: elapsedSeconds)
-        let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(10))
-
-        do {
-            try await activity.update(content)
-            lastLiveActivityUpdate = now
-        } catch {
-            log.error("Live Activity update failed: \(error.localizedDescription)")
-        }
-    }
-#endif
 
     private func stopEngineLoop() {
         schedulingTask?.cancel()
