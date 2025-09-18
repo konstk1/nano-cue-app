@@ -193,12 +193,20 @@ final class CuedTimer: NSObject {
         let secsPart = totalSeconds.truncatingRemainder(dividingBy: 60.0)
 
         let tolerance = precisionSeconds / 2
-        
+
+        func isNearMultiple(of interval: Double) -> Bool {
+            guard interval > 0 else { return false }
+            let remainder = secsPart.truncatingRemainder(dividingBy: interval)
+            let distance = min(remainder, interval - remainder)
+            return distance < tolerance
+        }
+
         if secsPart < tolerance && minutes > 0 {
             announce("\(minutes) " + (minutes > 1 ? "minutes" : "minute"))
-        } else if secsPart.truncatingRemainder(dividingBy: 10.0) < tolerance {
-            announce("\(Int(secsPart))")
-        } else if secsPart.truncatingRemainder(dividingBy: 5.0) < tolerance {
+        } else if secsPart >= tolerance && isNearMultiple(of: 10.0) {
+            let rounded = Int(secsPart.rounded())
+            announce("\(rounded)")
+        } else if secsPart >= tolerance && isNearMultiple(of: 5.0) {
             // Ticks are rendered by the audio engine loop; only trigger haptics here.
             playHaptic()
         }
