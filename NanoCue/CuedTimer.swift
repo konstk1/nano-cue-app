@@ -81,7 +81,6 @@ final class CuedTimer: NSObject {
     @ObservationIgnored private var tickBuffer: AVAudioPCMBuffer?
     @ObservationIgnored private let clock = ContinuousClock()
     @ObservationIgnored private var startInstant: ContinuousClock.Instant?
-    @ObservationIgnored private var elapsedOffset: Duration = .zero
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
 
     // Haptics (iOS only)
@@ -125,19 +124,15 @@ final class CuedTimer: NSObject {
     func start() {
         if tickerTask == nil {
             startEngineLoop()
-            startInstant = clock.now
+            startInstant = clock.now - elapsed
+            refreshElapsed()
             // Notify that `isRunning` (computed) will change
             self.withMutation(keyPath: \CuedTimer.isRunning) {
                 tickerTask = Task { [weak self] in
                     guard let self else { return }
                     while !Task.isCancelled {
                         try? await self.clock.sleep(for: precision)
-                        if let instant = self.startInstant {
-                            let runDuration = self.clock.now - instant
-                            self.elapsed = self.elapsedOffset + runDuration
-                        } else {
-                            self.elapsed = self.elapsedOffset
-                        }
+                        self.refreshElapsed()
                         self.announceSideEffects()
                     }
                 }
@@ -152,16 +147,17 @@ final class CuedTimer: NSObject {
             tickerTask?.cancel()
             tickerTask = nil
         }
-        elapsedOffset = elapsed
+        refreshElapsed()
         startInstant = nil
         stopEngineLoop()
     }
 
     func reset() {
         elapsed = .zero
-        elapsedOffset = .zero
         if tickerTask != nil {
             startInstant = clock.now
+        } else {
+            startInstant = nil
         }
     }
 
@@ -224,6 +220,11 @@ final class CuedTimer: NSObject {
         #if os(iOS)
         haptics.notificationOccurred(.success)
         #endif
+    }
+
+    private func refreshElapsed() {
+        guard let instant = startInstant else { return }
+        elapsed = clock.now - instant
     }
 
     private func playTick() {
@@ -298,7 +299,7 @@ final class CuedTimer: NSObject {
     }
 
     private func startEngineLoop() {
-        guard let engine, let playerNode, let tickBuffer else { return }
+        guard let engine, let playerNode else { return }
         if !engine.isRunning {
             do {
                 try engine.start()
