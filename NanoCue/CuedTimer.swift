@@ -79,10 +79,9 @@ final class CuedTimer: NSObject {
     @ObservationIgnored private var bedPlayerNode: AVAudioPlayerNode?
     @ObservationIgnored private var bedBuffer: AVAudioPCMBuffer?
     @ObservationIgnored private var tickBuffer: AVAudioPCMBuffer?
-    @ObservationIgnored private var schedulingTask: Task<Void, Never>?
-    @ObservationIgnored private var startSample: AVAudioFramePosition?
-    @ObservationIgnored private var nextScheduledSample: AVAudioFramePosition?
-    @ObservationIgnored private let tickIntervalSeconds: Double = 5.0
+    @ObservationIgnored private let clock = ContinuousClock()
+    @ObservationIgnored private var startInstant: ContinuousClock.Instant?
+    @ObservationIgnored private var elapsedOffset: Duration = .zero
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
 
     // Haptics (iOS only)
@@ -126,26 +125,18 @@ final class CuedTimer: NSObject {
     func start() {
         if tickerTask == nil {
             startEngineLoop()
+            startInstant = clock.now
             // Notify that `isRunning` (computed) will change
             self.withMutation(keyPath: \CuedTimer.isRunning) {
                 tickerTask = Task { [weak self] in
                     guard let self else { return }
-                    let clock = ContinuousClock()
                     while !Task.isCancelled {
-                        try? await clock.sleep(for: precision)
-                        // Drive elapsed from the audio engine clock to avoid drift
-                        if let player = self.playerNode,
-                           let nodeTime = player.lastRenderTime,
-                           let pt = player.playerTime(forNodeTime: nodeTime),
-                           let startSample = self.startSample {
-                            let sr = pt.sampleRate
-                            let nowSample = pt.sampleTime
-                            let playedSamples = max(AVAudioFramePosition(0), nowSample - startSample)
-                            let seconds = Double(playedSamples) / sr
-                            let ns = Int64(seconds * 1_000_000_000)
-                            self.elapsed = .nanoseconds(ns)
+                        try? await self.clock.sleep(for: precision)
+                        if let instant = self.startInstant {
+                            let runDuration = self.clock.now - instant
+                            self.elapsed = self.elapsedOffset + runDuration
                         } else {
-                            self.elapsed += precision
+                            self.elapsed = self.elapsedOffset
                         }
                         self.announceSideEffects()
                     }
@@ -161,11 +152,17 @@ final class CuedTimer: NSObject {
             tickerTask?.cancel()
             tickerTask = nil
         }
+        elapsedOffset = elapsed
+        startInstant = nil
         stopEngineLoop()
     }
 
     func reset() {
         elapsed = .zero
+        elapsedOffset = .zero
+        if tickerTask != nil {
+            startInstant = clock.now
+        }
     }
 
     // MARK: - Formatting & cues
@@ -200,15 +197,26 @@ final class CuedTimer: NSObject {
             let distance = min(remainder, interval - remainder)
             return distance < tolerance
         }
+        
+        log.debug("seconds: \(totalSeconds)")
+
+        let nearTen = secsPart >= tolerance && isNearMultiple(of: 10.0)
+        let nearFive = secsPart >= tolerance && isNearMultiple(of: 5.0)
+
+        if nearFive {
+            log.debug("tick: \(secsPart)")
+            playTick()
+            if !nearTen {
+                playHaptic()
+            }
+        }
 
         if secsPart < tolerance && minutes > 0 {
             announce("\(minutes) " + (minutes > 1 ? "minutes" : "minute"))
-        } else if secsPart >= tolerance && isNearMultiple(of: 10.0) {
+        } else if nearTen {
             let rounded = Int(secsPart.rounded())
+            log.debug("announcing: \(rounded)")
             announce("\(rounded)")
-        } else if secsPart >= tolerance && isNearMultiple(of: 5.0) {
-            // Ticks are rendered by the audio engine loop; only trigger haptics here.
-            playHaptic()
         }
     }
 
@@ -216,6 +224,15 @@ final class CuedTimer: NSObject {
         #if os(iOS)
         haptics.notificationOccurred(.success)
         #endif
+    }
+
+    private func playTick() {
+        guard let player = playerNode,
+              let tickBuffer else { return }
+        player.scheduleBuffer(tickBuffer, at: nil, options: [])
+        if !player.isPlaying {
+            player.play()
+        }
     }
 
     private func announce(_ text: String) {
@@ -301,54 +318,12 @@ final class CuedTimer: NSObject {
         // Apply current tick volume to the dedicated mixer node.
         tickMixerNode?.outputVolume = tickVolume.volumeFactor
 
-        // Align first tick to +5s from now and keep ~20s scheduled ahead
-        schedulingTask?.cancel()
-        startSample = nil
-        nextScheduledSample = nil
-        schedulingTask = Task { [weak self] in
-            guard let self else { return }
-            while !Task.isCancelled {
-                guard let player = self.playerNode else { break }
-                guard let nodeTime = player.lastRenderTime,
-                      let pt = player.playerTime(forNodeTime: nodeTime) else {
-                    try? await Task.sleep(nanoseconds: 50_000_000)
-                    continue
-                }
-
-                let sr = pt.sampleRate
-                let nowSample = pt.sampleTime
-
-                if self.startSample == nil {
-                    // Anchor elapsed to current engine time; first tick in +5s
-                    self.startSample = nowSample
-                    self.nextScheduledSample = nowSample + AVAudioFramePosition(sr * self.tickIntervalSeconds)
-                }
-
-                guard var nextSample = self.nextScheduledSample else {
-                    try? await Task.sleep(nanoseconds: 50_000_000)
-                    continue
-                }
-
-                let horizon = nowSample + AVAudioFramePosition(sr * 20.0)
-                while nextSample <= horizon {
-                    let at = AVAudioTime(sampleTime: nextSample, atRate: sr)
-                    await player.scheduleBuffer(tickBuffer, at: at, options: [])
-                    nextSample += AVAudioFramePosition(sr * self.tickIntervalSeconds)
-                }
-                self.nextScheduledSample = nextSample
-
-                try? await Task.sleep(nanoseconds: 300_000_000)
-            }
-        }
     }
 
     private func stopEngineLoop() {
-        schedulingTask?.cancel()
-        schedulingTask = nil
-        startSample = nil
-        nextScheduledSample = nil
         guard let player = playerNode else { return }
         if player.isPlaying { player.stop() }
+        player.reset()
         if let bedPlayer = bedPlayerNode {
             if bedPlayer.isPlaying {
                 bedPlayer.stop()
