@@ -62,8 +62,6 @@ final class CuedTimer: NSObject {
         set {
             self.withMutation(keyPath: \CuedTimer.tickVolume) {
                 tickVolumeStorage = newValue.rawValue
-                // Control the dedicated tick mixer node so it affects the tick path.
-                tickMixerNode?.outputVolume = newValue.volumeFactor
             }
         }
     }
@@ -71,16 +69,11 @@ final class CuedTimer: NSObject {
     // MARK: - Private
     @ObservationIgnored private let log = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "timer")
     @ObservationIgnored private let precision: Duration = .milliseconds(100)
+    @ObservationIgnored private var tickPlayer: AVAudioPlayer?
     @ObservationIgnored private var tickerTask: Task<Void, Never>?
-    // Audio engine for background-safe ticking
-    @ObservationIgnored private var engine: AVAudioEngine?
-    @ObservationIgnored private var playerNode: AVAudioPlayerNode?
-    @ObservationIgnored private var tickMixerNode: AVAudioMixerNode?
-    @ObservationIgnored private var bedPlayerNode: AVAudioPlayerNode?
-    @ObservationIgnored private var bedBuffer: AVAudioPCMBuffer?
-    @ObservationIgnored private var tickBuffer: AVAudioPCMBuffer?
     @ObservationIgnored private let clock = ContinuousClock()
     @ObservationIgnored private var startInstant: ContinuousClock.Instant?
+    @ObservationIgnored private var lastCuedSecond: Int = 0 // track the most recent second that emitted a cue
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
 
     // Haptics (iOS only)
@@ -94,7 +87,6 @@ final class CuedTimer: NSObject {
             #if os(iOS)
             // Configure the audio session on iOS
             try AVAudioSession.sharedInstance().setCategory(.playback, options: .mixWithOthers)
-            try AVAudioSession.sharedInstance().setActive(true)
 
             // Keep the device awake whenever the app is in the foreground.
             UIApplication.shared.isIdleTimerDisabled = true
@@ -122,19 +114,23 @@ final class CuedTimer: NSObject {
 
     // MARK: - Controls
     func start() {
-        if tickerTask == nil {
-            startEngineLoop()
-            startInstant = clock.now - elapsed
-            refreshElapsed()
-            // Notify that `isRunning` (computed) will change
-            self.withMutation(keyPath: \CuedTimer.isRunning) {
-                tickerTask = Task { [weak self] in
-                    guard let self else { return }
-                    while !Task.isCancelled {
-                        try? await self.clock.sleep(for: precision)
-                        self.refreshElapsed()
-                        self.announceSideEffects()
-                    }
+        guard tickerTask == nil else { return }
+        
+        try? AVAudioSession.sharedInstance().setActive(true)
+        
+        startInstant = clock.now - elapsed
+        refreshElapsed()
+        let seconds = Self.seconds(for: elapsed)
+        lastCuedSecond = Int(seconds.rounded(.down))
+        
+        // Notify that `isRunning` (computed) will change
+        self.withMutation(keyPath: \CuedTimer.isRunning) {
+            tickerTask = Task { [weak self] in
+                guard let self else { return }
+                while !Task.isCancelled {
+                    try? await self.clock.sleep(for: precision)
+                    self.refreshElapsed()
+                    self.announceSideEffects()
                 }
             }
         }
@@ -142,18 +138,23 @@ final class CuedTimer: NSObject {
 
     func stop() {
         guard tickerTask != nil else { return }
+        
+        try? AVAudioSession.sharedInstance().setActive(false)
+        
         // Notify that `isRunning` (computed) will change
         self.withMutation(keyPath: \CuedTimer.isRunning) {
             tickerTask?.cancel()
             tickerTask = nil
         }
         refreshElapsed()
+        let seconds = Self.seconds(for: elapsed)
+        lastCuedSecond = Int(seconds.rounded(.down))
         startInstant = nil
-        stopEngineLoop()
     }
 
     func reset() {
         elapsed = .zero
+        lastCuedSecond = 0
         if tickerTask != nil {
             startInstant = clock.now
         } else {
@@ -181,45 +182,26 @@ final class CuedTimer: NSObject {
         let totalSeconds = Self.seconds(for: elapsed)
         let p = precision.components
         let precisionSeconds = Double(p.seconds) + Double(p.attoseconds) * 1e-18
-
-        let minutes = Int(totalSeconds / 60.0)
-        let secsPart = totalSeconds.truncatingRemainder(dividingBy: 60.0)
-
-        let tolerance = precisionSeconds / 2
-
-        func isNearMultiple(of interval: Double) -> Bool {
-            guard interval > 0 else { return false }
-            let remainder = secsPart.truncatingRemainder(dividingBy: interval)
-            let distance = min(remainder, interval - remainder)
-            return distance < tolerance
+        let tolerance = max(precisionSeconds, 0.1)
+        
+        // if within tolerance of a whole second
+        let cueSecond = Int(totalSeconds.rounded())
+//        print("totalSeconds \(totalSeconds) - cueSecond \(cueSecond) = \(abs(totalSeconds - Double(cueSecond)))")
+        guard abs(totalSeconds - Double(cueSecond)) < tolerance  && lastCuedSecond != cueSecond else {
+            return
         }
         
-        log.debug("seconds: \(totalSeconds)")
+        lastCuedSecond = cueSecond
 
-        let nearTen = secsPart >= tolerance && isNearMultiple(of: 10.0)
-        let nearFive = secsPart >= tolerance && isNearMultiple(of: 5.0)
-
-        if nearFive {
-            log.debug("tick: \(secsPart)")
+        if cueSecond % 60 == 0 {
+            let minutes = cueSecond / 60
+            announce("\(minutes) " + (minutes == 1 ? "minute" : "minutes"))
+        } else if cueSecond % 10 == 0 {
+            let spoken = cueSecond % 60
+            announce("\(spoken)")
+        } else if cueSecond % 5 == 0 {
             playTick()
-            if !nearTen {
-                playHaptic()
-            }
         }
-
-        if secsPart < tolerance && minutes > 0 {
-            announce("\(minutes) " + (minutes > 1 ? "minutes" : "minute"))
-        } else if nearTen {
-            let rounded = Int(secsPart.rounded())
-            log.debug("announcing: \(rounded)")
-            announce("\(rounded)")
-        }
-    }
-
-    private func playHaptic() {
-        #if os(iOS)
-        haptics.notificationOccurred(.success)
-        #endif
     }
 
     private func refreshElapsed() {
@@ -228,12 +210,11 @@ final class CuedTimer: NSObject {
     }
 
     private func playTick() {
-        guard let player = playerNode,
-              let tickBuffer else { return }
-        player.scheduleBuffer(tickBuffer, at: nil, options: [])
-        if !player.isPlaying {
-            player.play()
-        }
+        tickPlayer?.volume = tickVolume.volumeFactor
+        tickPlayer?.play()
+#if os(iOS)
+        haptics.notificationOccurred(.success)
+#endif
     }
 
     private func announce(_ text: String) {
@@ -246,91 +227,28 @@ final class CuedTimer: NSObject {
 
     // MARK: - Audio engine ticking (background-safe)
     private func setupAudioEngine() {
-        let engine = AVAudioEngine()
-        let player = AVAudioPlayerNode()
-        let tickMixer = AVAudioMixerNode()
-        let bedPlayer = AVAudioPlayerNode()
-
-        engine.attach(player)
-        engine.attach(tickMixer)
-        engine.attach(bedPlayer)
-
-        // Load the tick from bundle into a PCM buffer
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try AVAudioSession.sharedInstance().setActive(true)
+            print("Session is Active")
+        } catch {
+            print(error)
+        }
+        
         if let url = Bundle.main.url(forResource: "Tink", withExtension: "aiff") {
             do {
-                let file = try AVAudioFile(forReading: url)
-                let format = file.processingFormat
-                let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(file.length))!
-                try file.read(into: buffer)
-                tickBuffer = buffer
-
-                // Route: player -> tickMixer -> mainMixer
-                engine.connect(player, to: tickMixer, format: format)
-                // Keep graph rendering with a silent bed into the same mixer
-                let hw = engine.outputNode.outputFormat(forBus: 0)
-                engine.connect(bedPlayer, to: tickMixer, format: hw)
-                engine.connect(tickMixer, to: engine.mainMixerNode, format: nil)
-
-                let framesPerSecond = AVAudioFrameCount(hw.sampleRate.rounded())
-                if let silentBuffer = AVAudioPCMBuffer(pcmFormat: hw, frameCapacity: framesPerSecond) {
-                    silentBuffer.frameLength = framesPerSecond
-                    let abl = UnsafeMutableAudioBufferListPointer(silentBuffer.mutableAudioBufferList)
-                    for buffer in abl {
-                        if let data = buffer.mData {
-                            memset(data, 0, Int(buffer.mDataByteSize))
-                        }
-                    }
-                    bedBuffer = silentBuffer
-                }
-
-                // Initialize tick mixer volume to stored preference
-                tickMixer.outputVolume = tickVolume.volumeFactor
+                tickPlayer = try AVAudioPlayer(contentsOf: url)
             } catch {
                 log.error("Failed to load tick sound: \(error.localizedDescription)")
             }
         } else {
             log.error("Tink.aiff not found in bundle.")
         }
-
-        self.engine = engine
-        self.playerNode = player
-        self.tickMixerNode = tickMixer
-        self.bedPlayerNode = bedPlayer
     }
-
-    private func startEngineLoop() {
-        guard let engine, let playerNode else { return }
-        if !engine.isRunning {
-            do {
-                try engine.start()
-            } catch {
-                log.error("Engine start failed: \(error.localizedDescription)")
-            }
-        }
-        if !playerNode.isPlaying { playerNode.play() }
-        if let bedPlayer = bedPlayerNode {
-            if !bedPlayer.isPlaying {
-                if let silentBuffer = bedBuffer {
-                    bedPlayer.scheduleBuffer(silentBuffer, at: nil, options: [.loops])
-                }
-                bedPlayer.play()
-            }
-        }
-        // Apply current tick volume to the dedicated mixer node.
-        tickMixerNode?.outputVolume = tickVolume.volumeFactor
-
-    }
-
-    private func stopEngineLoop() {
-        guard let player = playerNode else { return }
-        if player.isPlaying { player.stop() }
-        player.reset()
-        if let bedPlayer = bedPlayerNode {
-            if bedPlayer.isPlaying {
-                bedPlayer.stop()
-            }
-            bedPlayer.reset()
-        }
-        // Keep engine alive but idle; it will suspend when not used
+    
+    // MARK: - Delegates
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        log.debug("Finished playing tick (success \(flag))")
+        tickPlayer?.prepareToPlay()
     }
 }
