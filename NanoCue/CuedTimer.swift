@@ -19,7 +19,7 @@ enum TickVolume: String, CaseIterable {
     case low
     case medium
     case high
-
+    
     var displayName: String {
         switch self {
         case .low: return "Low"
@@ -27,7 +27,7 @@ enum TickVolume: String, CaseIterable {
         case .high: return "High"
         }
     }
-
+    
     // Relative to system volume (AVAudioPlayer volume is 0.0 ... 1.0)
     var volumeFactor: Float {
         switch self {
@@ -40,23 +40,23 @@ enum TickVolume: String, CaseIterable {
 
 @MainActor
 @Observable
-final class CuedTimer: NSObject {
+final class CuedTimer: NSObject, AVAudioPlayerDelegate {
     // MARK: - Published state
     var elapsed: Duration = .zero {
         didSet { updateFormatted() }
     }
     var elapsedTime: String = "00:00.0"
-
+    
     // Expose running state for UI
     var isRunning: Bool {
         tickerTask != nil
     }
-
+    
     // Store the tick volume selection in AppStorage.
     // Use a private storage to avoid Observation macro name collisions.
     @ObservationIgnored
     @AppStorage("tickVolume") private var tickVolumeStorage: String = TickVolume.medium.rawValue
-
+    
     var tickVolume: TickVolume {
         get { TickVolume(rawValue: tickVolumeStorage) ?? .medium }
         set {
@@ -65,7 +65,7 @@ final class CuedTimer: NSObject {
             }
         }
     }
-
+    
     // MARK: - Private
     @ObservationIgnored private let log = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "timer")
     @ObservationIgnored private let precision: Duration = .milliseconds(100)
@@ -77,26 +77,26 @@ final class CuedTimer: NSObject {
     @ObservationIgnored private var startInstant: ContinuousClock.Instant?
     @ObservationIgnored private var lastCuedSecond: Int = 0 // track the most recent second that emitted a cue
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
-
+    
     // Haptics (iOS only)
-    #if os(iOS)
+#if os(iOS)
     @ObservationIgnored private let haptics = UINotificationFeedbackGenerator()
-    #endif
-
+#endif
+    
     override init() {
         super.init()
         do {
-            #if os(iOS)
+#if os(iOS)
             // Configure the audio session on iOS
             try audioSession.setCategory(.playback, options: .mixWithOthers)
             
             // Keep the device awake whenever the app is in the foreground.
             UIApplication.shared.isIdleTimerDisabled = true
             
-NotificationCenter.default.addObserver(self, selector: #selector(handleDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
-NotificationCenter.default.addObserver(self, selector: #selector(handleWillResignActive), name: UIApplication.willResignActiveNotification, object: nil)
-            #endif
-
+            NotificationCenter.default.addObserver(self, selector: #selector(handleDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(handleWillResignActive), name: UIApplication.willResignActiveNotification, object: nil)
+#endif
+            
             setupAudioEngine()
         } catch {
             log.error("Audio init failed: \(error.localizedDescription)")
@@ -105,12 +105,12 @@ NotificationCenter.default.addObserver(self, selector: #selector(handleWillResig
         
         log.debug("CuedTimer init")
     }
-
+    
     deinit {
         tickerTask?.cancel()
         tickerTask = nil
-
-        #if os(iOS)
+        
+#if os(iOS)
         NotificationCenter.default.removeObserver(self, name: UIApplication.didEnterBackgroundNotification, object: nil)
         NotificationCenter.default.removeObserver(self, name: UIApplication.willResignActiveNotification, object: nil)
         // Restore default idle behavior when this object goes away.
@@ -118,9 +118,9 @@ NotificationCenter.default.addObserver(self, selector: #selector(handleWillResig
         Task { @MainActor in
             UIApplication.shared.isIdleTimerDisabled = false
         }
-        #endif
+#endif
     }
-
+    
     // MARK: - Controls
     func start() {
         guard tickerTask == nil else { return }
@@ -144,7 +144,7 @@ NotificationCenter.default.addObserver(self, selector: #selector(handleWillResig
             }
         }
     }
-
+    
     func stop() {
         guard tickerTask != nil else { return }
         
@@ -160,7 +160,7 @@ NotificationCenter.default.addObserver(self, selector: #selector(handleWillResig
         lastCuedSecond = Int(seconds.rounded(.down))
         startInstant = nil
     }
-
+    
     func reset() {
         elapsed = .zero
         lastCuedSecond = 0
@@ -170,23 +170,23 @@ NotificationCenter.default.addObserver(self, selector: #selector(handleWillResig
             startInstant = nil
         }
     }
-
+    
     // MARK: - Formatting & cues
     static func seconds(for duration: Duration) -> Double {
         let comps = duration.components
         return Double(comps.seconds) + Double(comps.attoseconds) * 1e-18
     }
-
+    
     private func updateFormatted() {
         let totalSeconds = Self.seconds(for: elapsed)
-
+        
         let minutes = Int(totalSeconds / 60.0)
         let seconds = totalSeconds.truncatingRemainder(dividingBy: 60.0)
-
+        
         // Simple manual formatting to match prior look; could also use FormatStyle on Duration.
         elapsedTime = String(format: "%02d:%04.1f", minutes, seconds)
     }
-
+    
     private func announceSideEffects() {
         let totalSeconds = Self.seconds(for: elapsed)
         let p = precision.components
@@ -201,7 +201,7 @@ NotificationCenter.default.addObserver(self, selector: #selector(handleWillResig
         }
         
         lastCuedSecond = cueSecond
-
+        
         if cueSecond % 60 == 0 {
             let minutes = cueSecond / 60
             log.debug("Announcing \(minutes) min")
@@ -215,12 +215,12 @@ NotificationCenter.default.addObserver(self, selector: #selector(handleWillResig
             playTick()
         }
     }
-
+    
     private func refreshElapsed() {
         guard let instant = startInstant else { return }
         elapsed = clock.now - instant
     }
-
+    
     private func playTick() {
         tickPlayer?.volume = tickVolume.volumeFactor
         tickPlayer?.play()
@@ -228,20 +228,22 @@ NotificationCenter.default.addObserver(self, selector: #selector(handleWillResig
         haptics.notificationOccurred(.success)
 #endif
     }
-
+    
     private func announce(_ text: String) {
         let utterance = AVSpeechUtterance(string: text)
         // Do not override volume; use system volume for speech by default.
-
+        
         // speak() is non-blocking; calling directly on the main actor is safe.
         synthesizer.speak(utterance)
     }
-
+    
     // MARK: - Audio engine ticking (background-safe)
     private func setupAudioEngine() {
         if let url = Bundle.main.url(forResource: "Tink", withExtension: "aiff") {
             do {
                 tickPlayer = try AVAudioPlayer(contentsOf: url)
+                tickPlayer?.prepareToPlay()
+                tickPlayer?.delegate = self
             } catch {
                 log.error("Failed to load tick sound: \(error.localizedDescription)")
             }
