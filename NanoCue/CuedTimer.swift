@@ -69,6 +69,8 @@ final class CuedTimer: NSObject {
     // MARK: - Private
     @ObservationIgnored private let log = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "timer")
     @ObservationIgnored private let precision: Duration = .milliseconds(100)
+    
+    @ObservationIgnored private let audioSession = AVAudioSession.sharedInstance()
     @ObservationIgnored private var tickPlayer: AVAudioPlayer?
     @ObservationIgnored private var tickerTask: Task<Void, Never>?
     @ObservationIgnored private let clock = ContinuousClock()
@@ -86,16 +88,21 @@ final class CuedTimer: NSObject {
         do {
             #if os(iOS)
             // Configure the audio session on iOS
-            try AVAudioSession.sharedInstance().setCategory(.playback, options: .mixWithOthers)
-
+            try audioSession.setCategory(.playback, options: .mixWithOthers)
+            
             // Keep the device awake whenever the app is in the foreground.
             UIApplication.shared.isIdleTimerDisabled = true
+            
+NotificationCenter.default.addObserver(self, selector: #selector(handleDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
+NotificationCenter.default.addObserver(self, selector: #selector(handleWillResignActive), name: UIApplication.willResignActiveNotification, object: nil)
             #endif
 
             setupAudioEngine()
         } catch {
             log.error("Audio init failed: \(error.localizedDescription)")
         }
+        
+        
         log.debug("CuedTimer init")
     }
 
@@ -104,6 +111,8 @@ final class CuedTimer: NSObject {
         tickerTask = nil
 
         #if os(iOS)
+        NotificationCenter.default.removeObserver(self, name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: UIApplication.willResignActiveNotification, object: nil)
         // Restore default idle behavior when this object goes away.
         // (This flag only has effect while your app is active.)
         Task { @MainActor in
@@ -116,7 +125,7 @@ final class CuedTimer: NSObject {
     func start() {
         guard tickerTask == nil else { return }
         
-        try? AVAudioSession.sharedInstance().setActive(true)
+        try? audioSession.setActive(true)
         
         startInstant = clock.now - elapsed
         refreshElapsed()
@@ -139,7 +148,7 @@ final class CuedTimer: NSObject {
     func stop() {
         guard tickerTask != nil else { return }
         
-        try? AVAudioSession.sharedInstance().setActive(false)
+        try? audioSession.setActive(false)
         
         // Notify that `isRunning` (computed) will change
         self.withMutation(keyPath: \CuedTimer.isRunning) {
@@ -186,7 +195,7 @@ final class CuedTimer: NSObject {
         
         // if within tolerance of a whole second
         let cueSecond = Int(totalSeconds.rounded())
-//        print("totalSeconds \(totalSeconds) - cueSecond \(cueSecond) = \(abs(totalSeconds - Double(cueSecond)))")
+        log.debug("totalSeconds \(totalSeconds) - cueSecond \(cueSecond) = \(abs(totalSeconds - Double(cueSecond)))")
         guard abs(totalSeconds - Double(cueSecond)) < tolerance  && lastCuedSecond != cueSecond else {
             return
         }
@@ -195,11 +204,14 @@ final class CuedTimer: NSObject {
 
         if cueSecond % 60 == 0 {
             let minutes = cueSecond / 60
+            log.debug("Announcing \(minutes) min")
             announce("\(minutes) " + (minutes == 1 ? "minute" : "minutes"))
         } else if cueSecond % 10 == 0 {
             let spoken = cueSecond % 60
+            log.debug("Announcing \(spoken)")
             announce("\(spoken)")
         } else if cueSecond % 5 == 0 {
+            log.debug("Tick")
             playTick()
         }
     }
@@ -227,14 +239,6 @@ final class CuedTimer: NSObject {
 
     // MARK: - Audio engine ticking (background-safe)
     private func setupAudioEngine() {
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try AVAudioSession.sharedInstance().setActive(true)
-            print("Session is Active")
-        } catch {
-            print(error)
-        }
-        
         if let url = Bundle.main.url(forResource: "Tink", withExtension: "aiff") {
             do {
                 tickPlayer = try AVAudioPlayer(contentsOf: url)
@@ -251,4 +255,14 @@ final class CuedTimer: NSObject {
         log.debug("Finished playing tick (success \(flag))")
         tickPlayer?.prepareToPlay()
     }
+    
+#if os(iOS)
+    @objc private func handleDidEnterBackground() {
+        log.debug("App did enter background")
+    }
+    
+    @objc private func handleWillResignActive() {
+        log.debug("App will resign active (may be suspended soon)")
+    }
+#endif
 }
