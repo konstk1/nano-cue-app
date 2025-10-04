@@ -68,16 +68,19 @@ final class CuedTimer {
     
     // MARK: - Private
     @ObservationIgnored private let log = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "timer")
-    @ObservationIgnored private let precision: Duration = .milliseconds(100)
     
+    // Timer
+    @ObservationIgnored private let clock = ContinuousClock()
+    @ObservationIgnored private var startInstant: ContinuousClock.Instant?
+    @ObservationIgnored private let precision: Duration = .milliseconds(100)
+    @ObservationIgnored private var lastCuedSecond: Int = 0 // track the most recent second that emitted a cue
+    
+    // Audio
     @ObservationIgnored private let audioSession = AVAudioSession.sharedInstance()
     @ObservationIgnored private let audioEngine = AVAudioEngine()
     @ObservationIgnored private let tickPlayerNode = AVAudioPlayerNode()
     @ObservationIgnored private var tickAudioFile: AVAudioFile?
     @ObservationIgnored private var tickerTask: Task<Void, Never>?
-    @ObservationIgnored private let clock = ContinuousClock()
-    @ObservationIgnored private var startInstant: ContinuousClock.Instant?
-    @ObservationIgnored private var lastCuedSecond: Int = 0 // track the most recent second that emitted a cue
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
     
     // Haptics (iOS only)
@@ -159,21 +162,22 @@ final class CuedTimer {
     func stop() {
         guard tickerTask != nil else { return }
 
-        // Stop the player node and audio engine
-        tickPlayerNode.stop()
-        audioEngine.stop()
-
-        try? audioSession.setActive(false)
-
-        // Notify that `isRunning` (computed) will change
+        // Notify that `isRunning` (computed) will change FIRST, before any blocking operations
         self.withMutation(keyPath: \CuedTimer.isRunning) {
             tickerTask?.cancel()
             tickerTask = nil
         }
+
+        // Update elapsed time state
         refreshElapsed()
         let seconds = Self.seconds(for: elapsed)
         lastCuedSecond = Int(seconds.rounded(.down))
         startInstant = nil
+
+        // Clean up audio resources (may block, but UI state is already updated)
+        tickPlayerNode.stop()
+        audioEngine.stop()
+        try? audioSession.setActive(false)
     }
     
     func reset() {
@@ -210,7 +214,7 @@ final class CuedTimer {
         
         // if within tolerance of a whole second
         let cueSecond = Int(totalSeconds.rounded())
-        log.debug("totalSeconds \(totalSeconds) - cueSecond \(cueSecond) = \(abs(totalSeconds - Double(cueSecond)))")
+//        log.debug("totalSeconds \(totalSeconds) - cueSecond \(cueSecond) = \(abs(totalSeconds - Double(cueSecond)))")
         guard abs(totalSeconds - Double(cueSecond)) < tolerance  && lastCuedSecond != cueSecond else {
             return
         }
