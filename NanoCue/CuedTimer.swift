@@ -27,7 +27,15 @@ enum TickVolume: String, CaseIterable {
         case .high: return "High"
         }
     }
-    
+
+    var iconName: String {
+        switch self {
+        case .low: return "speaker.wave.1.fill"
+        case .medium: return "speaker.wave.2.fill"
+        case .high: return "speaker.wave.3.fill"
+        }
+    }
+
     // Relative to system volume (AVAudioPlayer volume is 0.0 ... 1.0)
     var volumeFactor: Float {
         switch self {
@@ -48,21 +56,16 @@ final class CuedTimer {
     var elapsedTime: String = "00:00.0"
     
     // Expose running state for UI
-    var isRunning: Bool {
-        tickerTask != nil
-    }
+    var isRunning: Bool = false
     
-    // Store the tick volume selection in AppStorage.
-    // Use a private storage to avoid Observation macro name collisions.
+    // AppStorage for persistence (not directly observable)
     @ObservationIgnored
     @AppStorage("tickVolume") private var tickVolumeStorage: String = TickVolume.medium.rawValue
-    
-    var tickVolume: TickVolume {
-        get { TickVolume(rawValue: tickVolumeStorage) ?? .medium }
-        set {
-            self.withMutation(keyPath: \CuedTimer.tickVolume) {
-                tickVolumeStorage = newValue.rawValue
-            }
+
+    // Observable property that syncs to storage
+    var tickVolume: TickVolume = .medium {
+        didSet {
+            tickVolumeStorage = tickVolume.rawValue
         }
     }
     
@@ -89,24 +92,27 @@ final class CuedTimer {
 #endif
     
     init() {
+        // Load saved volume from storage
+        tickVolume = TickVolume(rawValue: tickVolumeStorage) ?? .medium
+
         do {
 #if os(iOS)
             // Configure the audio session on iOS
             try audioSession.setCategory(.playback, options: .mixWithOthers)
-            
+
             // Keep the device awake whenever the app is in the foreground.
             UIApplication.shared.isIdleTimerDisabled = true
-            
+
             NotificationCenter.default.addObserver(self, selector: #selector(handleDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(handleWillResignActive), name: UIApplication.willResignActiveNotification, object: nil)
 #endif
-            
+
             setupAudioEngine()
         } catch {
             log.error("Audio init failed: \(error.localizedDescription)")
         }
-        
-        
+
+
         log.debug("CuedTimer init")
     }
     
@@ -146,15 +152,14 @@ final class CuedTimer {
         let seconds = Self.seconds(for: elapsed)
         lastCuedSecond = Int(seconds.rounded(.down))
 
-        // Notify that `isRunning` (computed) will change
-        self.withMutation(keyPath: \CuedTimer.isRunning) {
-            tickerTask = Task { [weak self] in
-                guard let self else { return }
-                while !Task.isCancelled {
-                    try? await self.clock.sleep(for: precision)
-                    self.refreshElapsed()
-                    self.announceSideEffects()
-                }
+        // Update running state and start ticker task
+        isRunning = true
+        tickerTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                try? await self.clock.sleep(for: precision)
+                self.refreshElapsed()
+                self.announceSideEffects()
             }
         }
     }
@@ -162,11 +167,10 @@ final class CuedTimer {
     func stop() {
         guard tickerTask != nil else { return }
 
-        // Notify that `isRunning` (computed) will change FIRST, before any blocking operations
-        self.withMutation(keyPath: \CuedTimer.isRunning) {
-            tickerTask?.cancel()
-            tickerTask = nil
-        }
+        // Update running state FIRST, before any blocking operations
+        isRunning = false
+        tickerTask?.cancel()
+        tickerTask = nil
 
         // Update elapsed time state
         refreshElapsed()

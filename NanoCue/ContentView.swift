@@ -55,19 +55,37 @@ struct ContentView: View {
             }
 
             Spacer()
-            
-            // Tick volume control
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Tick Volume", systemImage: "speaker.wave.2.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
 
-                Picker("Tick Volume", selection: $timer.tickVolume) {
+            // Tick volume control
+            VStack(spacing: 10) {
+                HStack {
+                    Label("Tick Volume", systemImage: "speaker.wave.2.fill")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+
+                HStack(spacing: 8) {
                     ForEach(TickVolume.allCases, id: \.self) { level in
-                        Text(level.displayName).tag(level)
+                        Button {
+                            timer.tickVolume = level
+                        } label: {
+                            VStack(spacing: 4) {
+                                Image(systemName: level.iconName)
+                                    .font(.body)
+                                    .symbolRenderingMode(.hierarchical)
+                                Text(level.displayName)
+                                    .font(.caption2.weight(.medium))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.bordered)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .tint(timer.tickVolume == level ? .blue : .gray)
+                        .opacity(timer.tickVolume == level ? 1.0 : 0.6)
                     }
                 }
-                .pickerStyle(.segmented)
             }
         }
         .padding(24)
