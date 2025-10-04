@@ -9,22 +9,21 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var timer = CuedTimer()
-    private let buttonHeight: CGFloat = 30
 
     init() {}
 
     var body: some View {
-        VStack(spacing: 24) {
-            // Main time readout
-            VStack(spacing: 8) {
-                Text(timer.elapsedTime)
-                    .font(.system(size: 64, weight: .bold, design: .monospaced))
-                    .contentTransition(.numericText())
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
+        VStack(spacing: 40) {
+            Spacer()
+            Spacer()
 
-            // Transport controls
-            HStack(spacing: 12) {
+            // Main time readout with styled decimal
+            timeDisplay
+
+            Spacer()
+
+            // Timer controls
+            HStack(spacing: 16) {
                 Button {
                     if timer.isRunning {
                         timer.stop()
@@ -32,40 +31,36 @@ struct ContentView: View {
                         timer.start()
                     }
                 } label: {
-                    // Keep icon position fixed, let text grow to the right.
-                    Label {
-                        Text(timer.isRunning ? "Pause" : "Start")
-                            .lineLimit(1)
-                    } icon: {
-                        Image(systemName: timer.isRunning ? "pause.fill" : "play.fill")
-                            .frame(width: 20, alignment: .center) // fixed icon width
-                    }
-                    .labelStyle(.titleAndIcon)
-                    // Keep overall button width stable as text changes.
-                    .frame(minWidth: 80, minHeight: buttonHeight, alignment: .leading)
-                    .padding(.leading, 10)
+                    Label(timer.isRunning ? "Pause" : "Start",
+                          systemImage: timer.isRunning ? "pause.fill" : "play.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
                 }
-                // Use a single style so padding stays identical between states.
                 .buttonStyle(.borderedProminent)
-                // Tint gray when running, default accent color otherwise.
-                .tint(timer.isRunning ? .gray : .accentColor)
+                .clipShape(Capsule())
+                .tint(timer.isRunning ? .orange : .green)
 
-                Button(role: .destructive) {
+                Button {
                     timer.reset()
                 } label: {
                     Label("Reset", systemImage: "arrow.counterclockwise")
-                        .frame(minHeight: buttonHeight)
-                        .padding(.horizontal, 10)
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
                 }
                 .buttonStyle(.bordered)
+                .clipShape(Capsule())
+                .tint(.red)
             }
 
+            Spacer()
+            
             // Tick volume control
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Label("Tick Volume", systemImage: "speaker.wave.2.fill")
-                    Spacer()
-                }
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Tick Volume", systemImage: "speaker.wave.2.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
                 Picker("Tick Volume", selection: $timer.tickVolume) {
                     ForEach(TickVolume.allCases, id: \.self) { level in
@@ -75,7 +70,28 @@ struct ContentView: View {
                 .pickerStyle(.segmented)
             }
         }
-        .padding()
+        .padding(24)
+    }
+
+    private var timeDisplay: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            let components = timer.elapsedTime.split(separator: ".")
+            if components.count == 2 {
+                Text(String(components[0]))
+                    .font(.system(size: 80, weight: .bold, design: .rounded).monospacedDigit())
+                    .contentTransition(.numericText())
+                Text(".")
+                    .font(.system(size: 80, weight: .bold, design: .rounded))
+                Text(String(components[1]))
+                    .font(.system(size: 52, weight: .medium, design: .rounded).monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .contentTransition(.numericText())
+            } else {
+                Text(timer.elapsedTime)
+                    .font(.system(size: 72, weight: .bold, design: .rounded).monospacedDigit())
+                    .contentTransition(.numericText())
+            }
+        }
     }
 }
 
