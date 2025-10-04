@@ -220,10 +220,12 @@ final class CuedTimer {
         if cueSecond % 60 == 0 {
             let minutes = cueSecond / 60
             log.debug("Announcing \(minutes) min")
+            playTick()
             announce("\(minutes) " + (minutes == 1 ? "minute" : "minutes"))
         } else if cueSecond % 10 == 0 {
             let spoken = cueSecond % 60
             log.debug("Announcing \(spoken)")
+            playTick()
             announce("\(spoken)")
         } else if cueSecond % 5 == 0 {
             log.debug("Tick")
