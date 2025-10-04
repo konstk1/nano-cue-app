@@ -11,11 +11,6 @@
 - CLI build (Simulator): `xcodebuild -project NanoCue.xcodeproj -scheme NanoCue -configuration Debug -destination 'generic/platform=iOS Simulator' build`.
 - CLI tests: `xcodebuild -project NanoCue.xcodeproj -scheme NanoCue -destination 'platform=iOS Simulator,name=iPhone 15' test`.
 
-### Xcode Version (iOS 26 toolchain)
-- This project targets iOS 26 APIs. Use Xcode 16 beta.
-- CLI builds should select Xcode-beta explicitly:
-  - `DEVELOPER_DIR="/Applications/Xcode-beta.app/Contents/Developer" xcodebuild -project NanoCue.xcodeproj -scheme NanoCue -configuration Debug -destination 'generic/platform=iOS Simulator' build`
-
 ## Coding Style & Naming
 - Swift 6, 4‑space indentation; keep lines ≲120 chars.
 - Types: UpperCamelCase; methods/properties: lowerCamelCase; enum cases: lowerCamelCase.

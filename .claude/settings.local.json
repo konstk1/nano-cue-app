@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(DEVELOPER_DIR=\"/Applications/Xcode-beta.app/Contents/Developer\" xcodebuild -project NanoCue.xcodeproj -scheme NanoCue -configuration Debug -destination 'generic/platform=iOS Simulator' build)",
+      "Bash(xcodebuild:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
