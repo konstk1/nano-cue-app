@@ -40,7 +40,7 @@ enum TickVolume: String, CaseIterable {
 
 @MainActor
 @Observable
-final class CuedTimer: NSObject, AVAudioPlayerDelegate {
+final class CuedTimer {
     // MARK: - Published state
     var elapsed: Duration = .zero {
         didSet { updateFormatted() }
@@ -71,7 +71,9 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
     @ObservationIgnored private let precision: Duration = .milliseconds(100)
     
     @ObservationIgnored private let audioSession = AVAudioSession.sharedInstance()
-    @ObservationIgnored private var tickPlayer: AVAudioPlayer?
+    @ObservationIgnored private let audioEngine = AVAudioEngine()
+    @ObservationIgnored private let tickPlayerNode = AVAudioPlayerNode()
+    @ObservationIgnored private var tickAudioFile: AVAudioFile?
     @ObservationIgnored private var tickerTask: Task<Void, Never>?
     @ObservationIgnored private let clock = ContinuousClock()
     @ObservationIgnored private var startInstant: ContinuousClock.Instant?
@@ -83,8 +85,7 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
     @ObservationIgnored private let haptics = UINotificationFeedbackGenerator()
 #endif
     
-    override init() {
-        super.init()
+    init() {
         do {
 #if os(iOS)
             // Configure the audio session on iOS
@@ -124,14 +125,24 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
     // MARK: - Controls
     func start() {
         guard tickerTask == nil else { return }
-        
+
         try? audioSession.setActive(true)
-        
+
+        // Start the audio engine if not running
+        if !audioEngine.isRunning {
+            do {
+                try audioEngine.start()
+                log.debug("Audio engine started")
+            } catch {
+                log.error("Failed to start audio engine: \(error.localizedDescription)")
+            }
+        }
+
         startInstant = clock.now - elapsed
         refreshElapsed()
         let seconds = Self.seconds(for: elapsed)
         lastCuedSecond = Int(seconds.rounded(.down))
-        
+
         // Notify that `isRunning` (computed) will change
         self.withMutation(keyPath: \CuedTimer.isRunning) {
             tickerTask = Task { [weak self] in
@@ -147,9 +158,13 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
     
     func stop() {
         guard tickerTask != nil else { return }
-        
+
+        // Stop the player node and audio engine
+        tickPlayerNode.stop()
+        audioEngine.stop()
+
         try? audioSession.setActive(false)
-        
+
         // Notify that `isRunning` (computed) will change
         self.withMutation(keyPath: \CuedTimer.isRunning) {
             tickerTask?.cancel()
@@ -222,8 +237,13 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
     }
     
     private func playTick() {
-        tickPlayer?.volume = tickVolume.volumeFactor
-        tickPlayer?.play()
+        guard let audioFile = tickAudioFile else { return }
+
+        tickPlayerNode.volume = tickVolume.volumeFactor
+        tickPlayerNode.scheduleFile(audioFile, at: nil)
+
+        tickPlayerNode.play()
+
 #if os(iOS)
         haptics.notificationOccurred(.success)
 #endif
@@ -237,26 +257,28 @@ final class CuedTimer: NSObject, AVAudioPlayerDelegate {
         synthesizer.speak(utterance)
     }
     
-    // MARK: - Audio engine ticking (background-safe)
+    // MARK: - Audio engine setup (background-safe)
     private func setupAudioEngine() {
+        // Load the tick audio file
         if let url = Bundle.main.url(forResource: "Tink", withExtension: "aiff") {
             do {
-                tickPlayer = try AVAudioPlayer(contentsOf: url)
-                tickPlayer?.prepareToPlay()
-                tickPlayer?.delegate = self
+                tickAudioFile = try AVAudioFile(forReading: url)
             } catch {
                 log.error("Failed to load tick sound: \(error.localizedDescription)")
             }
         } else {
             log.error("Tink.aiff not found in bundle.")
         }
+
+        // Attach player node to engine
+        audioEngine.attach(tickPlayerNode)
+
+        // Connect player node to main mixer (which connects to output)
+        audioEngine.connect(tickPlayerNode, to: audioEngine.mainMixerNode, format: tickAudioFile?.processingFormat)
+
+        // Don't start the engine here - it will be started when timer starts
     }
     
-    // MARK: - Delegates
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        log.debug("Finished playing tick (success \(flag))")
-        tickPlayer?.prepareToPlay()
-    }
     
 #if os(iOS)
     @objc private func handleDidEnterBackground() {
