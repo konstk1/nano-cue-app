@@ -37,3 +37,15 @@
 ## Agent‑Specific Notes
 - Follow the structure above; avoid sweeping refactors.
 - When altering public APIs or behaviors, update tests and this guide accordingly.
+
+## Timer Behavior
+- Lead-in defaults to 3 seconds. The lead-in −/+ controls decrease/increase it in 1-second steps, from 0s to 60s.
+- Set duration defaults to 40 seconds and changes in 5-second steps (5–600 seconds).
+- Lead-in and interval controls lock after Start, including while paused; Reset stops and restores the chosen lead-in.
+- Lead-in time does not count toward sets. Set 1 begins at zero; each complete duration advances the set number.
+- Each bar represents one set: set 1 fills one bar, set 2 fills two, and so on, including during lead-in. Add rows of ten as needed; bars do not show elapsed progress.
+- Play only a tick at zero (including an immediate start with no lead-in), then retain the existing 5-second ticks and 10-second/minute speech cues.
+- Timer tests use an injected clock and disabled audio for deterministic pause, resume, reset, and boundary checks.
+- Set counting defaults on and can be toggled at any time. Off shows a dash, clears the set bars, and disables interval edits.
+- Toggling preserves elapsed time and interval; enabling again derives sets from total elapsed time since zero. Reset preserves the toggle.
+- Interval −/+ buttons use the full 44×48-point segment as their hit target, including blank space around the symbols.

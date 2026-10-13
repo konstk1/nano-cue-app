@@ -177,6 +177,9 @@
 			dependencies = (
 				FFAF11E82E6A673F00174D91 /* PBXTargetDependency */,
 			);
+			fileSystemSynchronizedGroups = (
+				FFDE63AD2E760E22005A1BBE /* NanoCueUITests */,
+			);
 			name = NanoCueUITests;
 			packageProductDependencies = (
 			);

@@ -50,11 +50,25 @@ enum TickVolume: String, CaseIterable {
 @Observable
 final class CuedTimer {
     // MARK: - Published state
-    var elapsed: Duration = .zero {
+    var elapsed: Duration = .seconds(-3) {
         didSet { updateFormatted() }
     }
-    var elapsedTime: String = "00:00.0"
+    var elapsedTime: String = "−00:03.0"
     
+    private(set) var leadInSeconds = 3
+    private(set) var setDurationSeconds = 40
+    private(set) var hasStarted = false
+    var isSetCountingEnabled = true
+
+    var completedSets: Int {
+        guard isSetCountingEnabled else { return 0 }
+        return Int(max(0, Self.seconds(for: elapsed)) / Double(setDurationSeconds))
+    }
+
+    var currentSet: Int { completedSets + 1 }
+
+    var startLabel: String { "Lead-in \(leadInSeconds)s" }
+
     // Expose running state for UI
     var isRunning: Bool = false
     
@@ -74,9 +88,11 @@ final class CuedTimer {
     
     // Timer
     @ObservationIgnored private let clock = ContinuousClock()
+    @ObservationIgnored private let now: () -> ContinuousClock.Instant
+    @ObservationIgnored private let audioEnabled: Bool
     @ObservationIgnored private var startInstant: ContinuousClock.Instant?
     @ObservationIgnored private let precision: Duration = .milliseconds(100)
-    @ObservationIgnored private var lastCuedSecond: Int = 0 // track the most recent second that emitted a cue
+    @ObservationIgnored private var lastCuedSecond: Int = -3 // most recent processed second
     
     // Audio
     @ObservationIgnored private let audioSession = AVAudioSession.sharedInstance()
@@ -91,9 +107,16 @@ final class CuedTimer {
     @ObservationIgnored private let haptics = UINotificationFeedbackGenerator()
 #endif
     
-    init() {
+    init(
+        now: @escaping () -> ContinuousClock.Instant = { ContinuousClock.now },
+        audioEnabled: Bool = true
+    ) {
+        self.now = now
+        self.audioEnabled = audioEnabled
         // Load saved volume from storage
         tickVolume = TickVolume(rawValue: tickVolumeStorage) ?? .medium
+
+        guard audioEnabled else { return }
 
         do {
 #if os(iOS)
@@ -125,8 +148,10 @@ final class CuedTimer {
         NotificationCenter.default.removeObserver(self, name: UIApplication.willResignActiveNotification, object: nil)
         // Restore default idle behavior when this object goes away.
         // (This flag only has effect while your app is active.)
-        Task { @MainActor in
-            UIApplication.shared.isIdleTimerDisabled = false
+        if audioEnabled {
+            Task { @MainActor in
+                UIApplication.shared.isIdleTimerDisabled = false
+            }
         }
 #endif
     }
@@ -135,10 +160,10 @@ final class CuedTimer {
     func start() {
         guard tickerTask == nil else { return }
 
-        try? audioSession.setActive(true)
+        if audioEnabled { try? audioSession.setActive(true) }
 
         // Start the audio engine if not running
-        if !audioEngine.isRunning {
+        if audioEnabled && !audioEngine.isRunning {
             do {
                 try audioEngine.start()
                 log.debug("Audio engine started")
@@ -147,17 +172,24 @@ final class CuedTimer {
             }
         }
 
-        startInstant = clock.now - elapsed
-        refreshElapsed()
-        let seconds = Self.seconds(for: elapsed)
-        lastCuedSecond = Int(seconds.rounded(.down))
+        startInstant = now() - elapsed
+        if !hasStarted {
+            lastCuedSecond = Int(Self.seconds(for: elapsed).rounded(.down))
+            if elapsed == .zero { emit(.tick) }
+        }
+        hasStarted = true
 
         // Update running state and start ticker task
         isRunning = true
         tickerTask = Task { [weak self] in
             guard let self else { return }
             while !Task.isCancelled {
-                try? await self.clock.sleep(for: precision)
+                do {
+                    try await self.clock.sleep(for: precision)
+                } catch {
+                    break
+                }
+                guard !Task.isCancelled else { break }
                 self.refreshElapsed()
                 self.announceSideEffects()
             }
@@ -174,26 +206,38 @@ final class CuedTimer {
 
         // Update elapsed time state
         refreshElapsed()
-        let seconds = Self.seconds(for: elapsed)
-        lastCuedSecond = Int(seconds.rounded(.down))
         startInstant = nil
 
         // Clean up audio resources (may block, but UI state is already updated)
-        tickPlayerNode.stop()
-        audioEngine.stop()
-        try? audioSession.setActive(false)
-    }
-    
-    func reset() {
-        elapsed = .zero
-        lastCuedSecond = 0
-        if tickerTask != nil {
-            startInstant = clock.now
-        } else {
-            startInstant = nil
+        if audioEnabled {
+            synthesizer.stopSpeaking(at: .immediate)
+            tickPlayerNode.stop()
+            audioEngine.stop()
+            try? audioSession.setActive(false)
         }
     }
     
+    func reset() {
+        stop()
+        elapsed = .seconds(-leadInSeconds)
+        lastCuedSecond = -leadInSeconds
+        startInstant = nil
+        hasStarted = false
+    }
+
+    /// Adjust the positive lead-in duration; the timer starts at its negative offset.
+    func adjustLeadIn(by seconds: Int) {
+        guard !hasStarted else { return }
+        leadInSeconds = min(60, max(0, leadInSeconds + seconds))
+        elapsed = .seconds(-leadInSeconds)
+        lastCuedSecond = -leadInSeconds
+    }
+
+    func adjustSetDuration(by steps: Int) {
+        guard !hasStarted, isSetCountingEnabled else { return }
+        setDurationSeconds = min(600, max(5, setDurationSeconds + steps * 5))
+    }
+
     // MARK: - Formatting & cues
     static func seconds(for duration: Duration) -> Double {
         let comps = duration.components
@@ -201,49 +245,48 @@ final class CuedTimer {
     }
     
     private func updateFormatted() {
-        let totalSeconds = Self.seconds(for: elapsed)
-        
-        let minutes = Int(totalSeconds / 60.0)
-        let seconds = totalSeconds.truncatingRemainder(dividingBy: 60.0)
-        
-        // Simple manual formatting to match prior look; could also use FormatStyle on Duration.
-        elapsedTime = String(format: "%02d:%04.1f", minutes, seconds)
+        let seconds = Self.seconds(for: elapsed)
+        // Format a single absolute tenths count so rounding cannot produce 00:60.0.
+        let tenths = Int((abs(seconds) * 10).rounded(.down))
+        let sign = seconds < 0 ? "−" : ""
+        elapsedTime = sign + String(format: "%02d:%02d.%d", tenths / 600, (tenths / 10) % 60, tenths % 10)
     }
-    
+
+    enum Cue: Equatable {
+        case tick
+        case speech(String)
+    }
+
+    /// Consume each crossed second once; zero is never announced before the lead-in ends.
+    func nextCue() -> Cue? {
+        let second = Int(Self.seconds(for: elapsed).rounded(.down))
+        guard second > lastCuedSecond else { return nil }
+        let previous = lastCuedSecond
+        lastCuedSecond = second
+        guard second >= 0 else { return nil }
+        if previous < 0 { return .tick }
+        if second > 0 && second % 60 == 0 {
+            let minutes = second / 60
+            return .speech("\(minutes) " + (minutes == 1 ? "minute" : "minutes"))
+        }
+        if second > 0 && second % 10 == 0 { return .speech("\(second % 60)") }
+        if second > 0 && second % 5 == 0 { return .tick }
+        return nil
+    }
+
     private func announceSideEffects() {
-        let totalSeconds = Self.seconds(for: elapsed)
-        let p = precision.components
-        let precisionSeconds = Double(p.seconds) + Double(p.attoseconds) * 1e-18
-        let tolerance = max(precisionSeconds, 0.1)
-        
-        // if within tolerance of a whole second
-        let cueSecond = Int(totalSeconds.rounded())
-//        log.debug("totalSeconds \(totalSeconds) - cueSecond \(cueSecond) = \(abs(totalSeconds - Double(cueSecond)))")
-        guard abs(totalSeconds - Double(cueSecond)) < tolerance  && lastCuedSecond != cueSecond else {
-            return
-        }
-        
-        lastCuedSecond = cueSecond
-        
-        if cueSecond % 60 == 0 {
-            let minutes = cueSecond / 60
-            log.debug("Announcing \(minutes) min")
-            playTick()
-            announce("\(minutes) " + (minutes == 1 ? "minute" : "minutes"))
-        } else if cueSecond % 10 == 0 {
-            let spoken = cueSecond % 60
-            log.debug("Announcing \(spoken)")
-            playTick()
-            announce("\(spoken)")
-        } else if cueSecond % 5 == 0 {
-            log.debug("Tick")
-            playTick()
-        }
+        if let cue = nextCue() { emit(cue) }
     }
-    
+
+    private func emit(_ cue: Cue) {
+        guard audioEnabled else { return }
+        playTick()
+        if case let .speech(text) = cue { announce(text) }
+    }
+
     private func refreshElapsed() {
         guard let instant = startInstant else { return }
-        elapsed = clock.now - instant
+        elapsed = now() - instant
     }
     
     private func playTick() {
